@@ -2,148 +2,193 @@
 
 ## Goal
 
-Implement the networking MVP described in [MobaSyncMVP.md](D:/Learn/GameLearn/UnityProjects/NetworkFW/MobaSyncMVP.md):
+Make the current project actually satisfy the MVP described in [MobaSyncMVP.md](D:/Learn/GameLearn/UnityProjects/NetworkFW/MobaSyncMVP.md):
 
-- Client sends only movement and shooting inputs
-- Server is authoritative for gameplay state
-- Server sends authoritative state and combat events
-- Client performs local prediction for movement and interpolation/reconciliation for presentation
+- Client sends only `MoveInput` and `ShootInput`
+- Server owns gameplay truth for position, HP, combat resolution, and validation
+- Server sends authoritative `PlayerState` and `CombatEvent`
+- Client predicts only local movement
+- Client reconciles local state and interpolates remote state for presentation
+
+## Current Audit Summary
+
+Already in place:
+
+- [x] `MoveInput` / `ShootInput` / `CombatEvent` protocol split is done
+- [x] Delivery policy mapping is aligned with sync lane vs reliable lane
+- [x] High-frequency stale filtering is limited to `MoveInput` and `PlayerState`
+- [x] Client prediction buffer is narrowed to movement
+- [x] Dual-transport runtime wiring exists in the shared network layer
+- [x] Network-layer regression tests exist for routing and stale filtering
+
+Still missing for MVP:
+
+- [ ] Client-side `ShootInput` send path
+- [ ] Client-side `CombatEvent` receive/apply path
+- [ ] Server startup path that actually uses `ServerNetworkHost`
+- [ ] Server-authoritative movement/state loop
+- [ ] Server-authoritative shooting/combat resolution loop
+- [ ] Full `PlayerState` field application for rotation / HP / velocity
+- [ ] Remote-player snapshot buffering and interpolation strategy
+- [ ] Explicit movement-stop handling via zero-input `MoveInput`
+- [ ] End-to-end gameplay regression coverage
+- [ ] Re-run build/test in an environment with the required .NET runtime installed
 
 ## Checklist
 
-### 1. Split Network Message Types
+### 1. Keep The Shared Networking Foundation Stable
 
-- [x] Add `MoveInput`, `ShootInput`, and `CombatEvent` to [`Assets/Scripts/Network/Defines/MessageType.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/Defines/MessageType.cs)
-- [x] Add matching protobuf definitions in the source `.proto` file
-- [x] Regenerate [`Assets/Scripts/Network/Defines/Message.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/Defines/Message.cs)
-- [x] Stop using one broad `PlayerInput` message to carry both movement and shooting
-
-Acceptance:
-
-- [x] `MoveInput`, `ShootInput`, and `CombatEvent` can be referenced independently in code
-- [x] The project builds successfully after regeneration
-
-### 2. Update Delivery Policy Mapping
-
-- [x] Update [`Assets/Scripts/Network/NetworkApplication/DefaultMessageDeliveryPolicyResolver.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkApplication/DefaultMessageDeliveryPolicyResolver.cs)
-- [x] Map `MoveInput` to `HighFrequencySync`
-- [x] Map `PlayerState` to `HighFrequencySync`
-- [x] Map `ShootInput` to `ReliableOrdered`
-- [x] Map `CombatEvent` to `ReliableOrdered`
+- [x] Keep `MoveInput`, `ShootInput`, `PlayerState`, and `CombatEvent` as the MVP gameplay messages
+- [x] Keep `MoveInput` and `PlayerState` on `HighFrequencySync`
+- [x] Keep `ShootInput` and `CombatEvent` on `ReliableOrdered`
+- [x] Keep stale-drop logic only for `MoveInput` and `PlayerState`
+- [x] Keep client prediction buffering limited to `MoveInput`
+- [x] Keep dual-transport runtime construction in [`Assets/Scripts/Network/NetworkApplication/NetworkIntegrationFactory.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkApplication/NetworkIntegrationFactory.cs)
 
 Acceptance:
 
-- [x] `MessageManager` routes movement/state messages to the sync lane
-- [x] `MessageManager` routes shooting/combat-result messages to the reliable lane
+- [x] Network-layer message routing still matches the MVP transport mapping
+- [x] Sequence filtering still matches the MVP tick rules
+- [x] Shared runtime and host still support separate reliable and sync transports
 
-### 3. Update Sequence Filtering For High-Frequency Messages
+### 2. Align Client Input Flow With MVP
 
-- [x] Modify [`Assets/Scripts/Network/NetworkApplication/SyncSequenceTracker.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkApplication/SyncSequenceTracker.cs)
-- [x] Replace `PlayerInput`-based stale filtering with `MoveInput`
-- [x] Keep stale filtering for `PlayerState`
-- [x] Do not apply stale-drop logic to `ShootInput`
-- [x] Do not apply stale-drop logic to `CombatEvent`
-
-Acceptance:
-
-- [x] Older `MoveInput` packets are dropped
-- [x] Older `PlayerState` packets are dropped
-- [x] `ShootInput` is not silently discarded by sequence filtering
-
-### 4. Narrow Prediction Buffer To Movement
-
-- [x] Modify [`Assets/Scripts/Network/NetworkApplication/ClientPredictionBuffer.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkApplication/ClientPredictionBuffer.cs)
-- [x] Store `MoveInput` instead of broad `PlayerInput`
-- [x] Continue pruning buffered inputs using authoritative `PlayerState.Tick`
-- [x] Keep shooting outside the prediction replay path
+- [ ] Update [`Assets/Scripts/MovementComponent.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/MovementComponent.cs) so movement intent can send an explicit zero-vector stop message when the player releases input
+- [ ] Keep local prediction immediate for the controlled player
+- [ ] Add a client shooting input capture path
+- [ ] Add `NetworkManager.SendShootInput(...)`
+- [ ] Ensure the client sends only `MoveInput` and `ShootInput` for gameplay actions
+- [ ] Keep local shooting presentation optional and purely cosmetic
 
 Acceptance:
 
-- [x] Local movement prediction still works
-- [x] Authoritative `PlayerState` still prunes acknowledged movement inputs
-- [x] Shooting does not depend on prediction buffer replay
+- [ ] Releasing movement input produces a final `MoveInput` that stops authoritative movement
+- [ ] Firing produces a `ShootInput` sent on the reliable lane
+- [ ] No MVP gameplay action depends on legacy broad messages such as `PlayerAction`
 
-### 5. Preserve And Use Dual-Transport Runtime Wiring
+### 3. Apply Full Authoritative `PlayerState` On The Client
 
-- [x] Verify [`Assets/Scripts/Network/NetworkApplication/SharedNetworkRuntime.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkApplication/SharedNetworkRuntime.cs) is used with both reliable and sync transports
-- [x] Verify [`Assets/Scripts/Network/NetworkHost/ServerNetworkHost.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkHost/ServerNetworkHost.cs) is used with both reliable and sync transports
-- [x] Keep the current dual-transport constructor shape for MVP
-- [x] Do not expand `ITransport` yet unless MVP proves it is necessary
-
-Acceptance:
-
-- [x] Client runtime can start with two distinct transport instances
-- [x] Server host can start with two distinct transport instances
-- [x] `MoveInput` / `PlayerState` can flow through the sync transport
-- [x] `ShootInput` / `CombatEvent` can flow through the reliable transport
-
-### 6. Finalize MVP Message Fields
-
-- [x] Define `MoveInput` fields: `playerId`, `tick`, `moveX`, `moveY`
-- [x] Define `ShootInput` fields: `playerId`, `tick`, `dirX`, `dirY`, optional `targetId`
-- [x] Define `PlayerState` fields: `playerId`, `tick`, `position`, `rotation`, `hp`, optional `velocity`
-- [x] Define `CombatEvent` fields: `tick`, `eventType`, `attackerId`, `targetId`, `damage`, optional `hitPosition`
-- [x] Add `CombatEventType` if needed
+- [ ] Extend the player-side presentation model to consume authoritative `position`, `rotation`, `hp`, and optional `velocity`
+- [ ] Keep local-player reconciliation driven by authoritative `PlayerState.Tick`
+- [ ] Use authoritative HP instead of any local guesswork
+- [ ] Decide where authoritative player state lives on the client side and keep that ownership explicit
+- [ ] Update UI or diagnostics so authoritative HP/state changes are observable during development
 
 Acceptance:
 
-- [x] MVP gameplay data can be expressed without ad hoc payload extensions
-- [x] Position, HP, and combat results all have explicit authoritative messages
+- [ ] Local player corrects to server truth for position and rotation
+- [ ] Local and remote players expose authoritative HP from `PlayerState`
+- [ ] The client does not finalize gameplay truth outside authoritative messages
 
-### 7. Add Message Routing Tests
+### 4. Replace Ad-Hoc Remote Movement Smoothing With Snapshot Interpolation
 
-- [x] Extend [`Assets/Tests/EditMode/Network/MessageManagerTests.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Tests/EditMode/Network/MessageManagerTests.cs)
-- [x] Add `SendMessage_MoveInput_UsesSyncLanePolicy`
-- [x] Add `SendMessage_ShootInput_UsesReliableLanePolicy`
-- [x] Add `SendMessage_CombatEvent_UsesReliableLanePolicy`
-- [x] Add `Receive_StaleMoveInput_IsDropped`
-- [x] Add `Receive_ShootInput_IsNotDroppedBySequenceTracker`
-
-Acceptance:
-
-- [x] Lane selection is covered by tests for all new MVP messages
-- [x] High-frequency stale-drop behavior is covered by tests
-
-### 8. Add Sync Strategy Tests
-
-- [x] Extend [`Assets/Tests/EditMode/Network/SyncStrategyTests.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Tests/EditMode/Network/SyncStrategyTests.cs)
-- [x] Add `ClientPredictionBuffer_AuthoritativeState_PrunesAcknowledgedMoveInputs`
-- [x] Add `ServerNetworkHost_RejectsStaleMoveInputPerPeerWithoutCrossPeerInterference`
+- [ ] Add a small `PlayerState` snapshot buffer for remote players
+- [ ] Interpolate between buffered snapshots instead of lerping directly to the latest state
+- [ ] Discard stale snapshots by tick
+- [ ] Keep remote players non-predicted
+- [ ] Document the interpolation delay / sample strategy in code comments or docs if it is non-obvious
 
 Acceptance:
 
-- [x] Prediction buffer still behaves correctly after switching to `MoveInput`
-- [x] Multi-session stale filtering remains isolated per peer
+- [ ] Remote movement is based on buffered authoritative snapshots
+- [ ] Out-of-order remote `PlayerState` packets do not corrupt presentation
+- [ ] Remote players are smoothed without becoming locally authoritative
 
-### 9. Wire Dual Transports In The Integration Layer
+### 5. Add Client-Side `CombatEvent` Handling
 
-- [x] Update the client integration entry point, likely [`Assets/Scripts/NetworkManager.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/NetworkManager.cs)
-- [x] Update the server startup integration point
-- [x] Instantiate one reliable transport and one sync transport
-- [x] Ensure runtime construction uses both transports instead of a single shared instance
-
-Acceptance:
-
-- [x] Runtime uses logical dual-lane routing backed by two transport instances
-- [x] Logging or tests confirm movement/state traffic and reliable event traffic are separated
-
-### 10. Build And Test
-
-- [x] Run `dotnet build Network.EditMode.Tests.csproj -v minimal`
-- [x] Run `dotnet test Network.EditMode.Tests.csproj --no-build -v minimal`
+- [ ] Register a `CombatEvent` handler in [`Assets/Scripts/NetworkManager.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/NetworkManager.cs)
+- [ ] Route combat results to the relevant player or combat presentation components
+- [ ] Apply hit / damage / death / shoot-rejected results from server truth
+- [ ] Keep local fire FX separate from authoritative damage and death resolution
+- [ ] Add UI or debug output for combat-result visibility during MVP development
 
 Acceptance:
 
-- [x] Build succeeds
-- [x] Edit-mode network tests succeed
-- [x] New MVP regression tests succeed
+- [ ] `CombatEvent` updates HP, death state, or hit feedback on clients
+- [ ] `ShootRejected` can be surfaced without client-side authoritative rollback logic
+- [ ] Combat results are driven by server messages, not speculative client outcomes
+
+### 6. Add A Real Server Startup / Integration Entry Point
+
+- [ ] Add or update the runtime server bootstrap so production code actually constructs [`ServerNetworkHost`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkHost/ServerNetworkHost.cs)
+- [ ] Start both reliable and sync transports from the server integration layer
+- [ ] Drain server pending messages on a regular loop
+- [ ] Hook server lifecycle logging/diagnostics in the same way the client runtime does
+- [ ] Make the startup path easy to locate and test
+
+Acceptance:
+
+- [ ] There is a concrete server startup path in production code, not only shared infrastructure and tests
+- [ ] Server runtime uses two distinct transport instances when sync port is configured
+- [ ] Server can receive gameplay traffic on both lanes
+
+### 7. Implement Server-Authoritative Movement And State Broadcast
+
+- [ ] Register `MoveInput` handling on the server
+- [ ] Maintain authoritative per-player movement state on the server
+- [ ] Validate and apply move input before mutating authoritative state
+- [ ] Use tick-aware stale filtering per peer without cross-peer interference
+- [ ] Broadcast authoritative `PlayerState` snapshots on the sync lane at a fixed cadence
+- [ ] Ensure zero-vector movement input stops authoritative movement
+
+Acceptance:
+
+- [ ] Server owns final position and movement resolution
+- [ ] Clients receive authoritative `PlayerState` snapshots for reconciliation/interpolation
+- [ ] Movement stop is reflected by server-authoritative state, not just local client visuals
+
+### 8. Implement Server-Authoritative Shooting And Combat Resolution
+
+- [ ] Register `ShootInput` handling on the server
+- [ ] Validate shoot requests before accepting them
+- [ ] Resolve hit, damage, death, and rejection on the server
+- [ ] Broadcast `CombatEvent` on the reliable lane
+- [ ] Reflect authoritative HP changes in subsequent `PlayerState` snapshots
+- [ ] Keep server combat resolution independent from cosmetic client preplay
+
+Acceptance:
+
+- [ ] Server decides whether shooting is valid
+- [ ] Server emits authoritative `CombatEvent` for damage/death/rejection
+- [ ] Clients update combat state from server truth
+
+### 9. Expand Regression Coverage From Network Layer To Gameplay Flow
+
+- [ ] Extend [`Assets/Tests/EditMode/Network/MessageManagerTests.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Tests/EditMode/Network/MessageManagerTests.cs) only as needed for lane policy regressions
+- [ ] Add tests that cover explicit zero-input movement stop behavior
+- [ ] Add tests for client `ShootInput` send routing
+- [ ] Add tests for `CombatEvent` receive/apply behavior
+- [ ] Add tests for remote `PlayerState` buffering / interpolation decisions where practical
+- [ ] Add tests for server-authoritative movement processing
+- [ ] Add tests for server-authoritative shooting/combat result generation
+- [ ] Add at least one end-to-end fake-transport test that covers `MoveInput -> PlayerState` and `ShootInput -> CombatEvent`
+
+Acceptance:
+
+- [ ] MVP gameplay flow is covered beyond transport-only assertions
+- [ ] Both client single-session and server multi-session behaviors remain protected
+- [ ] Regression tests fail if movement/combat authority accidentally drifts back to the client
+
+### 10. Re-Verify Build And Test
+
+- [ ] Install or use an environment that contains the required .NET runtime for this repository
+- [ ] Run `dotnet build Network.EditMode.Tests.csproj -v minimal`
+- [ ] Run `dotnet test Network.EditMode.Tests.csproj --no-build -v minimal`
+- [ ] Record the actual result after the environment issue is resolved
+
+Acceptance:
+
+- [ ] Build succeeds in a runnable local environment
+- [ ] Edit-mode network tests succeed
+- [ ] New MVP gameplay regression tests succeed
 
 ## Recommended Order
 
-1. Split protocol and message types
-2. Update delivery policy mapping
-3. Update sequence filtering
-4. Narrow prediction buffer
-5. Add and update tests
-6. Wire dual transports in integration
-7. Build and run tests
+1. Keep the shared networking foundation unchanged
+2. Fix client input flow, especially stop movement and `ShootInput`
+3. Add real server startup and authoritative movement/state broadcast
+4. Add authoritative shooting/combat resolution and `CombatEvent`
+5. Apply full authoritative state and combat results on the client
+6. Upgrade remote interpolation from direct lerp to snapshot buffering
+7. Add gameplay-flow regression tests
+8. Re-run build and test once the .NET runtime issue is resolved
