@@ -76,7 +76,7 @@ namespace Tests.EditMode.Network
         }
 
         [Test]
-        public void SharedNetworkRuntime_RoutesSyncMessagesThroughConfiguredSyncLane()
+        public void SharedNetworkRuntime_RoutesMoveInputThroughConfiguredSyncLane()
         {
             var reliableTransport = new FakeTransport();
             var syncTransport = new FakeTransport();
@@ -84,21 +84,23 @@ namespace Tests.EditMode.Network
                 reliableTransport,
                 new ImmediateNetworkMessageDispatcher(),
                 syncTransport: syncTransport);
-            var message = new PlayerInput
+            var message = new MoveInput
             {
                 PlayerId = "shared-player",
-                Tick = 33
+                Tick = 33,
+                MoveX = 1f,
+                MoveY = -1f
             };
 
-            runtime.MessageManager.SendMessage(message, MessageType.PlayerInput);
+            runtime.MessageManager.SendMessage(message, MessageType.MoveInput);
 
             Assert.That(reliableTransport.SendCallCount, Is.EqualTo(0));
             Assert.That(syncTransport.SendCallCount, Is.EqualTo(1));
             Assert.That(syncTransport.LastSentData, Is.Not.Null);
 
             var envelope = Envelope.Parser.ParseFrom(syncTransport.LastSentData);
-            Assert.That(envelope.Type, Is.EqualTo((int)MessageType.PlayerInput));
-            Assert.That(PlayerInput.Parser.ParseFrom(envelope.Payload).Tick, Is.EqualTo(33));
+            Assert.That(envelope.Type, Is.EqualTo((int)MessageType.MoveInput));
+            Assert.That(MoveInput.Parser.ParseFrom(envelope.Payload).Tick, Is.EqualTo(33));
         }
 
         private static byte[] BuildEnvelope(MessageType type, IMessage payload)

@@ -39,13 +39,13 @@ Other core gameplay data such as position and HP remain server-authoritative.
 
 ## Message Plan
 
-| Message | Direction | Reliability | Frequency | Purpose |
-|---|---|---|---|---|
-| `MoveInput` | Client -> Server | Low reliability / latest wins | 10-20 Hz | Report movement input |
-| `ShootInput` | Client -> Server | Reliable ordered | On demand | Report shoot request |
-| `PlayerState` | Server -> Client | Low reliability / latest wins | 10-20 Hz | Sync position, rotation, HP |
-| `CombatEvent` | Server -> Client | Reliable ordered | On demand | Sync hit, damage, death |
-| `Heartbeat` / `ClockSync` | Both ways | Reliable ordered | 1-2 Hz | Keepalive and server tick sync |
+| Message                   | Direction        | Reliability                   | Frequency | Purpose                        |
+|---------------------------|------------------|-------------------------------|-----------|--------------------------------|
+| `MoveInput`               | Client -> Server | Low reliability / latest wins | 10-20 Hz  | Report movement input          |
+| `ShootInput`              | Client -> Server | Reliable ordered              | On demand | Report shoot request           |
+| `PlayerState`             | Server -> Client | Low reliability / latest wins | 10-20 Hz  | Sync position, rotation, HP    |
+| `CombatEvent`             | Server -> Client | Reliable ordered              | On demand | Sync hit, damage, death        |
+| `Heartbeat` / `ClockSync` | Both ways        | Reliable ordered              | 1-2 Hz    | Keepalive and server tick sync |
 
 ## Message Definitions
 

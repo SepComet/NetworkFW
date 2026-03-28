@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
@@ -55,7 +55,7 @@ namespace Tests.EditMode.Network
         }
 
         [Test]
-        public void SendMessage_PlayerInput_UsesSyncLanePolicy()
+        public void SendMessage_MoveInput_UsesSyncLanePolicy()
         {
             var reliableTransport = new FakeTransport();
             var syncTransport = new FakeTransport();
@@ -64,20 +64,80 @@ namespace Tests.EditMode.Network
                 new MainThreadNetworkDispatcher(),
                 new DefaultMessageDeliveryPolicyResolver(),
                 syncTransport);
-            var message = new PlayerInput
+            var message = new MoveInput
             {
                 PlayerId = "player-1",
-                Tick = 12
+                Tick = 12,
+                MoveX = 1,
+                MoveY = -1
             };
 
-            manager.SendMessage(message, MessageType.PlayerInput);
+            manager.SendMessage(message, MessageType.MoveInput);
 
             Assert.That(reliableTransport.SendCallCount, Is.EqualTo(0));
             Assert.That(syncTransport.SendCallCount, Is.EqualTo(1));
 
             var envelope = Envelope.Parser.ParseFrom(syncTransport.LastSentData);
-            Assert.That(envelope.Type, Is.EqualTo((int)MessageType.PlayerInput));
-            Assert.That(PlayerInput.Parser.ParseFrom(envelope.Payload).Tick, Is.EqualTo(12));
+            Assert.That(envelope.Type, Is.EqualTo((int)MessageType.MoveInput));
+            Assert.That(MoveInput.Parser.ParseFrom(envelope.Payload).Tick, Is.EqualTo(12));
+        }
+
+        [Test]
+        public void SendMessage_ShootInput_UsesReliableLanePolicy()
+        {
+            var reliableTransport = new FakeTransport();
+            var syncTransport = new FakeTransport();
+            var manager = new MessageManager(
+                reliableTransport,
+                new MainThreadNetworkDispatcher(),
+                new DefaultMessageDeliveryPolicyResolver(),
+                syncTransport);
+            var message = new ShootInput
+            {
+                PlayerId = "player-1",
+                Tick = 15,
+                DirX = 0.5f,
+                DirY = 1f,
+                TargetId = "enemy-1"
+            };
+
+            manager.SendMessage(message, MessageType.ShootInput);
+
+            Assert.That(reliableTransport.SendCallCount, Is.EqualTo(1));
+            Assert.That(syncTransport.SendCallCount, Is.EqualTo(0));
+
+            var envelope = Envelope.Parser.ParseFrom(reliableTransport.LastSentData);
+            Assert.That(envelope.Type, Is.EqualTo((int)MessageType.ShootInput));
+            Assert.That(ShootInput.Parser.ParseFrom(envelope.Payload).TargetId, Is.EqualTo("enemy-1"));
+        }
+
+        [Test]
+        public void SendMessage_CombatEvent_UsesReliableLanePolicy()
+        {
+            var reliableTransport = new FakeTransport();
+            var syncTransport = new FakeTransport();
+            var manager = new MessageManager(
+                reliableTransport,
+                new MainThreadNetworkDispatcher(),
+                new DefaultMessageDeliveryPolicyResolver(),
+                syncTransport);
+            var message = new CombatEvent
+            {
+                Tick = 20,
+                EventType = CombatEventType.DamageApplied,
+                AttackerId = "player-1",
+                TargetId = "enemy-1",
+                Damage = 7
+            };
+
+            manager.SendMessage(message, MessageType.CombatEvent);
+
+            Assert.That(reliableTransport.SendCallCount, Is.EqualTo(1));
+            Assert.That(syncTransport.SendCallCount, Is.EqualTo(0));
+
+            var envelope = Envelope.Parser.ParseFrom(reliableTransport.LastSentData);
+            Assert.That(envelope.Type, Is.EqualTo((int)MessageType.CombatEvent));
+            Assert.That(CombatEvent.Parser.ParseFrom(envelope.Payload).Damage, Is.EqualTo(7));
         }
 
         [Test]
@@ -185,6 +245,31 @@ namespace Tests.EditMode.Network
         }
 
         [Test]
+        public void Receive_StaleMoveInput_IsDropped()
+        {
+            var transport = new FakeTransport();
+            var manager = new MessageManager(transport, new MainThreadNetworkDispatcher());
+            var handledTicks = new List<long>();
+
+            manager.RegisterHandler(MessageType.MoveInput, (payload, sender) =>
+            {
+                handledTicks.Add(MoveInput.Parser.ParseFrom(payload).Tick);
+            });
+
+            transport.EmitReceive(
+                BuildEnvelope(MessageType.MoveInput, new MoveInput { PlayerId = "player-1", Tick = 8, MoveX = 1 }),
+                Sender);
+            manager.DrainPendingMessagesAsync().GetAwaiter().GetResult();
+
+            transport.EmitReceive(
+                BuildEnvelope(MessageType.MoveInput, new MoveInput { PlayerId = "player-1", Tick = 6, MoveX = -1 }),
+                Sender);
+            manager.DrainPendingMessagesAsync().GetAwaiter().GetResult();
+
+            Assert.That(handledTicks, Is.EqualTo(new long[] { 8 }));
+        }
+
+        [Test]
         public void Receive_StalePlayerState_IsDropped()
         {
             var transport = new FakeTransport();
@@ -207,6 +292,31 @@ namespace Tests.EditMode.Network
             manager.DrainPendingMessagesAsync().GetAwaiter().GetResult();
 
             Assert.That(handledTicks, Is.EqualTo(new long[] { 8 }));
+        }
+
+        [Test]
+        public void Receive_ShootInput_IsNotDroppedBySequenceTracker()
+        {
+            var transport = new FakeTransport();
+            var manager = new MessageManager(transport, new MainThreadNetworkDispatcher());
+            var handledTicks = new List<long>();
+
+            manager.RegisterHandler(MessageType.ShootInput, (payload, sender) =>
+            {
+                handledTicks.Add(ShootInput.Parser.ParseFrom(payload).Tick);
+            });
+
+            transport.EmitReceive(
+                BuildEnvelope(MessageType.ShootInput, new ShootInput { PlayerId = "player-1", Tick = 8, DirX = 1f }),
+                Sender);
+            manager.DrainPendingMessagesAsync().GetAwaiter().GetResult();
+
+            transport.EmitReceive(
+                BuildEnvelope(MessageType.ShootInput, new ShootInput { PlayerId = "player-1", Tick = 6, DirY = 1f }),
+                Sender);
+            manager.DrainPendingMessagesAsync().GetAwaiter().GetResult();
+
+            Assert.That(handledTicks, Is.EqualTo(new long[] { 8, 6 }));
         }
 
         private static byte[] BuildEnvelope(MessageType type, IMessage payload)

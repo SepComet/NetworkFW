@@ -13,55 +13,55 @@ Implement the networking MVP described in [MobaSyncMVP.md](D:/Learn/GameLearn/Un
 
 ### 1. Split Network Message Types
 
-- [ ] Add `MoveInput`, `ShootInput`, and `CombatEvent` to [`Assets/Scripts/Network/Defines/MessageType.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/Defines/MessageType.cs)
-- [ ] Add matching protobuf definitions in the source `.proto` file
-- [ ] Regenerate [`Assets/Scripts/Network/Defines/Message.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/Defines/Message.cs)
-- [ ] Stop using one broad `PlayerInput` message to carry both movement and shooting
+- [x] Add `MoveInput`, `ShootInput`, and `CombatEvent` to [`Assets/Scripts/Network/Defines/MessageType.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/Defines/MessageType.cs)
+- [x] Add matching protobuf definitions in the source `.proto` file
+- [x] Regenerate [`Assets/Scripts/Network/Defines/Message.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/Defines/Message.cs)
+- [x] Stop using one broad `PlayerInput` message to carry both movement and shooting
 
 Acceptance:
 
-- [ ] `MoveInput`, `ShootInput`, and `CombatEvent` can be referenced independently in code
-- [ ] The project builds successfully after regeneration
+- [x] `MoveInput`, `ShootInput`, and `CombatEvent` can be referenced independently in code
+- [x] The project builds successfully after regeneration
 
 ### 2. Update Delivery Policy Mapping
 
-- [ ] Update [`Assets/Scripts/Network/NetworkApplication/DefaultMessageDeliveryPolicyResolver.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkApplication/DefaultMessageDeliveryPolicyResolver.cs)
-- [ ] Map `MoveInput` to `HighFrequencySync`
-- [ ] Map `PlayerState` to `HighFrequencySync`
-- [ ] Map `ShootInput` to `ReliableOrdered`
-- [ ] Map `CombatEvent` to `ReliableOrdered`
+- [x] Update [`Assets/Scripts/Network/NetworkApplication/DefaultMessageDeliveryPolicyResolver.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkApplication/DefaultMessageDeliveryPolicyResolver.cs)
+- [x] Map `MoveInput` to `HighFrequencySync`
+- [x] Map `PlayerState` to `HighFrequencySync`
+- [x] Map `ShootInput` to `ReliableOrdered`
+- [x] Map `CombatEvent` to `ReliableOrdered`
 
 Acceptance:
 
-- [ ] `MessageManager` routes movement/state messages to the sync lane
-- [ ] `MessageManager` routes shooting/combat-result messages to the reliable lane
+- [x] `MessageManager` routes movement/state messages to the sync lane
+- [x] `MessageManager` routes shooting/combat-result messages to the reliable lane
 
 ### 3. Update Sequence Filtering For High-Frequency Messages
 
-- [ ] Modify [`Assets/Scripts/Network/NetworkApplication/SyncSequenceTracker.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkApplication/SyncSequenceTracker.cs)
-- [ ] Replace `PlayerInput`-based stale filtering with `MoveInput`
-- [ ] Keep stale filtering for `PlayerState`
-- [ ] Do not apply stale-drop logic to `ShootInput`
-- [ ] Do not apply stale-drop logic to `CombatEvent`
+- [x] Modify [`Assets/Scripts/Network/NetworkApplication/SyncSequenceTracker.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkApplication/SyncSequenceTracker.cs)
+- [x] Replace `PlayerInput`-based stale filtering with `MoveInput`
+- [x] Keep stale filtering for `PlayerState`
+- [x] Do not apply stale-drop logic to `ShootInput`
+- [x] Do not apply stale-drop logic to `CombatEvent`
 
 Acceptance:
 
-- [ ] Older `MoveInput` packets are dropped
-- [ ] Older `PlayerState` packets are dropped
-- [ ] `ShootInput` is not silently discarded by sequence filtering
+- [x] Older `MoveInput` packets are dropped
+- [x] Older `PlayerState` packets are dropped
+- [x] `ShootInput` is not silently discarded by sequence filtering
 
 ### 4. Narrow Prediction Buffer To Movement
 
-- [ ] Modify [`Assets/Scripts/Network/NetworkApplication/ClientPredictionBuffer.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkApplication/ClientPredictionBuffer.cs)
-- [ ] Store `MoveInput` instead of broad `PlayerInput`
-- [ ] Continue pruning buffered inputs using authoritative `PlayerState.Tick`
-- [ ] Keep shooting outside the prediction replay path
+- [x] Modify [`Assets/Scripts/Network/NetworkApplication/ClientPredictionBuffer.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkApplication/ClientPredictionBuffer.cs)
+- [x] Store `MoveInput` instead of broad `PlayerInput`
+- [x] Continue pruning buffered inputs using authoritative `PlayerState.Tick`
+- [x] Keep shooting outside the prediction replay path
 
 Acceptance:
 
-- [ ] Local movement prediction still works
-- [ ] Authoritative `PlayerState` still prunes acknowledged movement inputs
-- [ ] Shooting does not depend on prediction buffer replay
+- [x] Local movement prediction still works
+- [x] Authoritative `PlayerState` still prunes acknowledged movement inputs
+- [x] Shooting does not depend on prediction buffer replay
 
 ### 5. Preserve And Use Dual-Transport Runtime Wiring
 
@@ -92,28 +92,28 @@ Acceptance:
 
 ### 7. Add Message Routing Tests
 
-- [ ] Extend [`Assets/Tests/EditMode/Network/MessageManagerTests.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Tests/EditMode/Network/MessageManagerTests.cs)
-- [ ] Add `SendMessage_MoveInput_UsesSyncLanePolicy`
-- [ ] Add `SendMessage_ShootInput_UsesReliableLanePolicy`
-- [ ] Add `SendMessage_CombatEvent_UsesReliableLanePolicy`
-- [ ] Add `Receive_StaleMoveInput_IsDropped`
-- [ ] Add `Receive_ShootInput_IsNotDroppedBySequenceTracker`
+- [x] Extend [`Assets/Tests/EditMode/Network/MessageManagerTests.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Tests/EditMode/Network/MessageManagerTests.cs)
+- [x] Add `SendMessage_MoveInput_UsesSyncLanePolicy`
+- [x] Add `SendMessage_ShootInput_UsesReliableLanePolicy`
+- [x] Add `SendMessage_CombatEvent_UsesReliableLanePolicy`
+- [x] Add `Receive_StaleMoveInput_IsDropped`
+- [x] Add `Receive_ShootInput_IsNotDroppedBySequenceTracker`
 
 Acceptance:
 
-- [ ] Lane selection is covered by tests for all new MVP messages
-- [ ] High-frequency stale-drop behavior is covered by tests
+- [x] Lane selection is covered by tests for all new MVP messages
+- [x] High-frequency stale-drop behavior is covered by tests
 
 ### 8. Add Sync Strategy Tests
 
-- [ ] Extend [`Assets/Tests/EditMode/Network/SyncStrategyTests.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Tests/EditMode/Network/SyncStrategyTests.cs)
-- [ ] Add `ClientPredictionBuffer_AuthoritativeState_PrunesAcknowledgedMoveInputs`
-- [ ] Add `ServerNetworkHost_RejectsStaleMoveInputPerPeerWithoutCrossPeerInterference`
+- [x] Extend [`Assets/Tests/EditMode/Network/SyncStrategyTests.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Tests/EditMode/Network/SyncStrategyTests.cs)
+- [x] Add `ClientPredictionBuffer_AuthoritativeState_PrunesAcknowledgedMoveInputs`
+- [x] Add `ServerNetworkHost_RejectsStaleMoveInputPerPeerWithoutCrossPeerInterference`
 
 Acceptance:
 
-- [ ] Prediction buffer still behaves correctly after switching to `MoveInput`
-- [ ] Multi-session stale filtering remains isolated per peer
+- [x] Prediction buffer still behaves correctly after switching to `MoveInput`
+- [x] Multi-session stale filtering remains isolated per peer
 
 ### 9. Wire Dual Transports In The Integration Layer
 
@@ -129,14 +129,14 @@ Acceptance:
 
 ### 10. Build And Test
 
-- [ ] Run `dotnet build Network.EditMode.Tests.csproj -v minimal`
-- [ ] Run `dotnet test Network.EditMode.Tests.csproj --no-build -v minimal`
+- [x] Run `dotnet build Network.EditMode.Tests.csproj -v minimal`
+- [x] Run `dotnet test Network.EditMode.Tests.csproj --no-build -v minimal`
 
 Acceptance:
 
-- [ ] Build succeeds
-- [ ] Edit-mode network tests succeed
-- [ ] New MVP regression tests succeed
+- [x] Build succeeds
+- [x] Edit-mode network tests succeed
+- [x] New MVP regression tests succeed
 
 ## Recommended Order
 

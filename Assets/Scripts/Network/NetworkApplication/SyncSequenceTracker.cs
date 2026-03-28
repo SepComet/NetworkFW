@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Net;
 using Network.Defines;
@@ -39,9 +38,9 @@ namespace Network.NetworkApplication
         {
             switch (messageType)
             {
-                case MessageType.PlayerInput:
+                case MessageType.MoveInput:
                 {
-                    var input = PlayerInput.Parser.ParseFrom(payload);
+                    var input = MoveInput.Parser.ParseFrom(payload);
                     streamKey = $"input:{Normalize(sender)}:{input.PlayerId}";
                     sequence = input.Tick;
                     return true;

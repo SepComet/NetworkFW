@@ -7,13 +7,13 @@ namespace Network.NetworkApplication
 {
     public sealed class ClientPredictionBuffer
     {
-        private readonly List<PlayerInput> pendingInputs = new();
+        private readonly List<MoveInput> pendingInputs = new();
 
         public long? LastAuthoritativeTick { get; private set; }
 
-        public IReadOnlyList<PlayerInput> PendingInputs => pendingInputs;
+        public IReadOnlyList<MoveInput> PendingInputs => pendingInputs;
 
-        public void Record(PlayerInput input)
+        public void Record(MoveInput input)
         {
             if (input == null)
             {
@@ -28,7 +28,7 @@ namespace Network.NetworkApplication
             pendingInputs.Add(input);
         }
 
-        public bool TryApplyAuthoritativeState(PlayerState state, out IReadOnlyList<PlayerInput> replayInputs)
+        public bool TryApplyAuthoritativeState(PlayerState state, out IReadOnlyList<MoveInput> replayInputs)
         {
             if (state == null)
             {
@@ -37,7 +37,7 @@ namespace Network.NetworkApplication
 
             if (LastAuthoritativeTick.HasValue && state.Tick <= LastAuthoritativeTick.Value)
             {
-                replayInputs = Array.Empty<PlayerInput>();
+                replayInputs = Array.Empty<MoveInput>();
                 return false;
             }
 

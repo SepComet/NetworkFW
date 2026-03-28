@@ -12,12 +12,12 @@ namespace Tests.EditMode.Network
     public class SyncStrategyTests
     {
         [Test]
-        public void ClientPredictionBuffer_AuthoritativeState_PrunesAcknowledgedInputs()
+        public void ClientPredictionBuffer_AuthoritativeState_PrunesAcknowledgedMoveInputs()
         {
             var buffer = new ClientPredictionBuffer();
-            buffer.Record(new PlayerInput { PlayerId = "player-1", Tick = 10 });
-            buffer.Record(new PlayerInput { PlayerId = "player-1", Tick = 11 });
-            buffer.Record(new PlayerInput { PlayerId = "player-1", Tick = 12 });
+            buffer.Record(new MoveInput { PlayerId = "player-1", Tick = 10, MoveX = 1f });
+            buffer.Record(new MoveInput { PlayerId = "player-1", Tick = 11, MoveX = 1f });
+            buffer.Record(new MoveInput { PlayerId = "player-1", Tick = 12, MoveX = 1f });
 
             var accepted = buffer.TryApplyAuthoritativeState(
                 new PlayerState { PlayerId = "player-1", Tick = 11 },
@@ -34,7 +34,7 @@ namespace Tests.EditMode.Network
         public void ClientPredictionBuffer_StaleAuthoritativeState_IsIgnored()
         {
             var buffer = new ClientPredictionBuffer();
-            buffer.Record(new PlayerInput { PlayerId = "player-1", Tick = 10 });
+            buffer.Record(new MoveInput { PlayerId = "player-1", Tick = 10, MoveX = 1f });
             buffer.TryApplyAuthoritativeState(new PlayerState { PlayerId = "player-1", Tick = 10 }, out _);
 
             var accepted = buffer.TryApplyAuthoritativeState(
@@ -75,7 +75,7 @@ namespace Tests.EditMode.Network
         }
 
         [Test]
-        public void ServerNetworkHost_RejectsStaleInputPerPeerWithoutCrossPeerInterference()
+        public void ServerNetworkHost_RejectsStaleMoveInputPerPeerWithoutCrossPeerInterference()
         {
             var transport = new FakeTransport();
             var host = new ServerNetworkHost(transport);
@@ -83,7 +83,7 @@ namespace Tests.EditMode.Network
             var peerB = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 5002);
             var handledTicksByPeer = new Dictionary<string, List<long>>();
 
-            host.MessageManager.RegisterHandler(MessageType.PlayerInput, (payload, sender) =>
+            host.MessageManager.RegisterHandler(MessageType.MoveInput, (payload, sender) =>
             {
                 var key = sender.ToString();
                 if (!handledTicksByPeer.TryGetValue(key, out var ticks))
@@ -92,17 +92,17 @@ namespace Tests.EditMode.Network
                     handledTicksByPeer.Add(key, ticks);
                 }
 
-                ticks.Add(PlayerInput.Parser.ParseFrom(payload).Tick);
+                ticks.Add(MoveInput.Parser.ParseFrom(payload).Tick);
             });
 
             transport.EmitReceive(
-                BuildEnvelope(MessageType.PlayerInput, new PlayerInput { PlayerId = "player-a", Tick = 5 }),
+                BuildEnvelope(MessageType.MoveInput, new MoveInput { PlayerId = "player-a", Tick = 5, MoveX = 1f }),
                 peerA);
             transport.EmitReceive(
-                BuildEnvelope(MessageType.PlayerInput, new PlayerInput { PlayerId = "player-a", Tick = 4 }),
+                BuildEnvelope(MessageType.MoveInput, new MoveInput { PlayerId = "player-a", Tick = 4, MoveX = -1f }),
                 peerA);
             transport.EmitReceive(
-                BuildEnvelope(MessageType.PlayerInput, new PlayerInput { PlayerId = "player-b", Tick = 4 }),
+                BuildEnvelope(MessageType.MoveInput, new MoveInput { PlayerId = "player-b", Tick = 4, MoveY = 1f }),
                 peerB);
 
             Assert.That(handledTicksByPeer[peerA.ToString()], Is.EqualTo(new long[] { 5 }));

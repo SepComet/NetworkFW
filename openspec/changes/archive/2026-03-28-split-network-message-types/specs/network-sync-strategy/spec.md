@@ -1,9 +1,5 @@
-# network-sync-strategy Specification
+## MODIFIED Requirements
 
-## Purpose
-Define how client and server route high-frequency gameplay synchronization traffic, reject stale updates, reconcile authoritative state, and process clock-sync samples independently of session lifecycle.
-
-## Requirements
 ### Requirement: Hosts assign delivery policies to synchronization message types
 The shared networking core SHALL allow hosts to map business message types to delivery policies. `MoveInput` and `PlayerState` MUST be assignable to a high-frequency sync policy that is independent from the reliable ordered control policy used by login and lifecycle traffic, while `ShootInput` and `CombatEvent` MUST remain independently routable business messages that can stay on the reliable ordered lane.
 
@@ -47,16 +43,3 @@ The client sync strategy SHALL reconcile local prediction against authoritative 
 - **WHEN** the client accepts an authoritative `PlayerState` update for tick `N`
 - **THEN** locally buffered predicted `MoveInput` messages with tick less than or equal to `N` are removed from the replay buffer
 - **THEN** only `MoveInput` messages newer than `N` remain eligible for re-simulation
-
-### Requirement: Clock synchronization is a separate sync-policy concern
-The shared networking core SHALL process server-tick or clock-synchronization samples through a dedicated sync-policy component rather than storing clock-sync ownership inside `SessionManager`.
-
-#### Scenario: Heartbeat response contributes a clock sample without mutating lifecycle
-- **WHEN** a heartbeat or gameplay sync message carries a server-tick sample
-- **THEN** the runtime forwards that sample to the clock-sync strategy
-- **THEN** session lifecycle state remains unchanged except for liveness or RTT bookkeeping
-
-#### Scenario: Hosts can consume smoothed clock data for prediction
-- **WHEN** prediction or reconciliation code needs the current server-time estimate
-- **THEN** it reads that estimate from the clock-sync strategy or state object
-- **THEN** it does not query `SessionManager` for authoritative clock ownership

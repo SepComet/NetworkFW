@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package Network.Defines;
+option csharp_namespace = "Network.Defines";
+
+message Envelope {
+  int32 type = 1;
+  bytes payload = 2;
+}
+
+message Vector3 {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message LoginRequest {
+  string player_id = 1;
+  int32 speed = 2;
+}
+
+message LoginResponse {
+  repeated string player_id = 1;
+  repeated Vector3 positions = 2;
+  int32 speed = 3;
+  int64 server_tick = 4;
+  bool result = 5;
+}
+
+message PlayerJoin {
+  string player_id = 1;
+  Vector3 position = 2;
+}
+
+message LogoutRequest {
+  string player_id = 1;
+}
+
+message MoveInput {
+  string player_id = 1;
+  int64 tick = 2;
+  float move_x = 3;
+  float move_y = 4;
+}
+
+message ShootInput {
+  string player_id = 1;
+  int64 tick = 2;
+  float dir_x = 3;
+  float dir_y = 4;
+  string target_id = 5;
+}
+
+enum CombatEventType {
+  COMBAT_EVENT_TYPE_UNSPECIFIED = 0;
+  COMBAT_EVENT_TYPE_HIT = 1;
+  COMBAT_EVENT_TYPE_DAMAGE_APPLIED = 2;
+  COMBAT_EVENT_TYPE_DEATH = 3;
+  COMBAT_EVENT_TYPE_SHOOT_REJECTED = 4;
+}
+
+message CombatEvent {
+  int64 tick = 1;
+  CombatEventType event_type = 2;
+  string attacker_id = 3;
+  string target_id = 4;
+  int32 damage = 5;
+  Vector3 hit_position = 6;
+}
+
+message PlayerState {
+  string player_id = 1;
+  Vector3 position = 2;
+  Vector3 velocity = 3;
+  float rotation = 4;
+  int64 tick = 5;
+  int32 hp = 6;
+}
+
+message Heartbeat {
+}
+
+message HeartbeatResponse {
+  int64 server_tick = 1;
+}

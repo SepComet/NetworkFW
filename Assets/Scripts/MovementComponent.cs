@@ -26,14 +26,14 @@ public class MovementComponent : MonoBehaviour
     private Vector3 _currentPos;
     private float _lerpTime;
     [SerializeField] private float _lerpRate = 0.1f;
-    private PlayerInput _cachedInput;
+    private MoveInput _cachedInput;
 
     public void Init(bool isControlled, Player master, int speed = 0, long serverTick = 0)
     {
-        this._master = master;
-        this._isControlled = isControlled;
-        this._speed = speed;
-        this._startTickOffset = serverTick;
+        _master = master;
+        _isControlled = isControlled;
+        _speed = speed;
+        _startTickOffset = serverTick;
         _rigid.interpolation = RigidbodyInterpolation.Interpolate;
         _rigid.isKinematic = !isControlled;
         _rigid.velocity = Vector3.zero;
@@ -50,7 +50,7 @@ public class MovementComponent : MonoBehaviour
             {
                 if (_cachedInput != null)
                 {
-                    NetworkManager.Instance.SendPlayerInput(_cachedInput);
+                    NetworkManager.Instance.SendMoveInput(_cachedInput);
                 }
 
                 _lastSendTime = Time.time;
@@ -98,21 +98,26 @@ public class MovementComponent : MonoBehaviour
         ReplayPendingInputs(replayInputs);
     }
 
-    private PlayerInput CaptureInput()
+    private MoveInput CaptureInput()
     {
-        Vector3 input = new Vector3(Input.GetAxisRaw("Horizontal"), 0, Input.GetAxisRaw("Vertical"));
-        if (input == Vector3.zero) return null;
-        return new PlayerInput()
+        var input = new Vector3(Input.GetAxisRaw("Horizontal"), 0, Input.GetAxisRaw("Vertical"));
+        if (input == Vector3.zero)
+        {
+            return null;
+        }
+
+        return new MoveInput
         {
             PlayerId = _master.PlayerId,
-            Input = ProtoExtensions.ToProtoVector3(input),
-            Tick = Tick
+            Tick = Tick,
+            MoveX = input.x,
+            MoveY = input.z
         };
     }
 
-    private void Simulate(PlayerInput input)
+    private void Simulate(MoveInput input)
     {
-        Vector3 dir = input == null ? Vector3.zero : input.Input.ToVector3();
+        var dir = input == null ? Vector3.zero : new Vector3(input.MoveX, 0f, input.MoveY);
         _rigid.velocity = _speed * dir;
         if (_isControlled)
         {
@@ -165,11 +170,11 @@ public class MovementComponent : MonoBehaviour
         }
     }
 
-    private void ReplayPendingInputs(IReadOnlyList<PlayerInput> replayInputs)
+    private void ReplayPendingInputs(IReadOnlyList<MoveInput> replayInputs)
     {
         foreach (var replayInput in replayInputs)
         {
-            _rigid.position += _speed * replayInput.Input.ToVector3() * _sendInterval;
+            _rigid.position += _speed * new Vector3(replayInput.MoveX, 0f, replayInput.MoveY) * _sendInterval;
         }
 
         if (_isControlled)

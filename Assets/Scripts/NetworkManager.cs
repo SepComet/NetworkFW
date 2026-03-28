@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Net;
 using System.Threading.Tasks;
 using Network.Defines;
@@ -153,7 +153,7 @@ public class NetworkManager : MonoBehaviour
             player.SyncTick(currentServerTick.Value);
         }
 
-        Debug.Log($"收到PlayerState::PlayerID={message.PlayerId},Position=" + message.Position.ToVector3().ToString());
+        Debug.Log($"收到PlayerState::PlayerID={message.PlayerId},Position=" + message.Position.ToVector3());
     }
 
     private void HandleHeartbeatResponse(byte[] data, IPEndPoint sender)
@@ -188,20 +188,21 @@ public class NetworkManager : MonoBehaviour
         Debug.Log($"[NetworkManager] Session {lifecycleEvent.PreviousState} -> {lifecycleEvent.CurrentState} ({lifecycleEvent.Kind}) {lifecycleEvent.Reason}");
     }
 
-    public void SendPlayerInput(string playerId, Vector3 input)
+    public void SendMoveInput(string playerId, Vector3 input)
     {
-        var message = new PlayerInput()
+        var message = new MoveInput
         {
             PlayerId = playerId,
-            Input = ProtoExtensions.ToProtoVector3(input)
+            MoveX = input.x,
+            MoveY = input.z
         };
-        _networkRuntime.MessageManager.SendMessage(message, MessageType.PlayerInput);
+        _networkRuntime.MessageManager.SendMessage(message, MessageType.MoveInput);
         Debug.Log($"PlayerMoveSeq: {_sequence++}");
     }
 
-    public void SendPlayerInput(PlayerInput message)
+    public void SendMoveInput(MoveInput message)
     {
-        _networkRuntime.MessageManager.SendMessage(message, MessageType.PlayerInput);
+        _networkRuntime.MessageManager.SendMessage(message, MessageType.MoveInput);
         Debug.Log($"PlayerMoveSeq: {_sequence++}");
     }
 

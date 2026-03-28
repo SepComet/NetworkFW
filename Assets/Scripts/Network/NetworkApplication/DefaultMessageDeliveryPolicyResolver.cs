@@ -8,7 +8,7 @@ namespace Network.NetworkApplication
         private static readonly IReadOnlyDictionary<MessageType, DeliveryPolicy> DefaultPolicies =
             new Dictionary<MessageType, DeliveryPolicy>
             {
-                { MessageType.PlayerInput, DeliveryPolicy.HighFrequencySync },
+                { MessageType.MoveInput, DeliveryPolicy.HighFrequencySync },
                 { MessageType.PlayerState, DeliveryPolicy.HighFrequencySync }
             };
 
