@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using Google.Protobuf;
@@ -139,6 +140,89 @@ namespace Tests.EditMode.Network
             Assert.That(host.ManagedSessions.Count, Is.EqualTo(1));
             Assert.That(host.TryGetSession(Sender, out var session), Is.True);
             Assert.That(session.SessionManager.State, Is.EqualTo(ConnectionState.TransportConnected));
+        }
+
+        [Test]
+        public void NetworkIntegrationFactory_CreateClientRuntime_WithSyncPort_UsesDistinctTransportsPerLane()
+        {
+            var createdTransports = new Dictionary<int, FakeTransport>();
+            var runtime = NetworkIntegrationFactory.CreateClientRuntime(
+                "127.0.0.1",
+                8080,
+                new ImmediateNetworkMessageDispatcher(),
+                syncPort: 8081,
+                transportFactory: (serverIp, port) =>
+                {
+                    var transport = new FakeTransport();
+                    createdTransports.Add(port, transport);
+                    return transport;
+                });
+            var moveInput = new MoveInput
+            {
+                PlayerId = "shared-player",
+                Tick = 77,
+                MoveX = 1f
+            };
+
+            runtime.MessageManager.SendMessage(moveInput, MessageType.MoveInput);
+            runtime.MessageManager.SendMessage(new Heartbeat(), MessageType.Heartbeat);
+
+            Assert.That(createdTransports.Keys, Is.EquivalentTo(new[] { 8080, 8081 }));
+            Assert.That(runtime.Transport, Is.SameAs(createdTransports[8080]));
+            Assert.That(runtime.SyncTransport, Is.SameAs(createdTransports[8081]));
+            Assert.That(createdTransports[8080].SendCallCount, Is.EqualTo(1));
+            Assert.That(createdTransports[8081].SendCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void NetworkIntegrationFactory_CreateServerHost_WithSyncPort_UsesDistinctTransportsPerLane()
+        {
+            var createdTransports = new Dictionary<int, FakeTransport>();
+            var host = NetworkIntegrationFactory.CreateServerHost(
+                9000,
+                syncPort: 9001,
+                transportFactory: port =>
+                {
+                    var transport = new FakeTransport();
+                    createdTransports.Add(port, transport);
+                    return transport;
+                });
+            var moveInput = new MoveInput
+            {
+                PlayerId = "server-player",
+                Tick = 88,
+                MoveY = 1f
+            };
+
+            host.MessageManager.SendMessage(moveInput, MessageType.MoveInput);
+            host.MessageManager.SendMessage(new Heartbeat(), MessageType.Heartbeat);
+
+            Assert.That(createdTransports.Keys, Is.EquivalentTo(new[] { 9000, 9001 }));
+            Assert.That(host.Transport, Is.SameAs(createdTransports[9000]));
+            Assert.That(host.SyncTransport, Is.SameAs(createdTransports[9001]));
+            Assert.That(createdTransports[9000].SendCallCount, Is.EqualTo(1));
+            Assert.That(createdTransports[9001].SendCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void NetworkIntegrationFactory_CreateServerHost_WithoutSyncPort_PreservesSingleTransportFallback()
+        {
+            var reliableTransport = new FakeTransport();
+            var host = NetworkIntegrationFactory.CreateServerHost(
+                9000,
+                transportFactory: _ => reliableTransport);
+            var moveInput = new MoveInput
+            {
+                PlayerId = "fallback-player",
+                Tick = 99,
+                MoveX = -1f
+            };
+
+            host.MessageManager.SendMessage(moveInput, MessageType.MoveInput);
+
+            Assert.That(host.Transport, Is.SameAs(reliableTransport));
+            Assert.That(host.SyncTransport, Is.Null);
+            Assert.That(reliableTransport.SendCallCount, Is.EqualTo(1));
         }
 
         private static byte[] BuildEnvelope(MessageType type, IMessage payload)

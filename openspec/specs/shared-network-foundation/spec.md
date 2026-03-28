@@ -70,3 +70,14 @@ The shared network foundation SHALL include host-agnostic session lifecycle orch
 - **WHEN** a non-Unity server host constructs the runtime networking stack for multiple remote peers
 - **THEN** it uses the shared transport and message-routing foundation together with shared multi-session lifecycle orchestration
 - **THEN** server-specific cleanup, admission, and gameplay reactions stay in the server host adapter rather than forking the shared lifecycle contract
+
+### Requirement: Shared network composition accepts dual transports
+The shared networking composition layer SHALL allow construction of network managers and related shared services with a primary reliable transport and an optional sync transport.
+
+#### Scenario: Integration receives both transports
+- **WHEN** a host composes the shared networking stack with both a reliable transport and a sync transport
+- **THEN** the shared composition path SHALL retain both dependencies for downstream routing and session services
+
+#### Scenario: Integration receives only one transport
+- **WHEN** a host composes the shared networking stack with only the reliable transport
+- **THEN** the shared composition path SHALL remain valid and SHALL treat the reliable transport as the fallback lane for traffic without a dedicated secondary transport

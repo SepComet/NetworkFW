@@ -3,13 +3,15 @@ using System.Net;
 using System.Threading.Tasks;
 using Network.Defines;
 using Network.NetworkApplication;
-using Network.NetworkTransport;
 using UnityEngine;
 using Vector3 = UnityEngine.Vector3;
 
 public class NetworkManager : MonoBehaviour
 {
     private const int MaxNetworkMessagesPerFrame = 32;
+    private const string DefaultServerIp = "127.0.0.1";
+    private const int DefaultReliablePort = 8080;
+    private const int DefaultSyncPort = 8081;
 
     public static NetworkManager Instance;
     private SharedNetworkRuntime _networkRuntime;
@@ -18,6 +20,9 @@ public class NetworkManager : MonoBehaviour
     private Task _networkDrainTask = Task.CompletedTask;
     [SerializeField] private GameObject _wrongWindow;
     [SerializeField] private bool _enableNetworkDiagnosticsOverlay = true;
+    [SerializeField] private string _serverIp = DefaultServerIp;
+    [SerializeField] private int _reliablePort = DefaultReliablePort;
+    [SerializeField] private int _syncPort = DefaultSyncPort;
 
     private void Awake()
     {
@@ -28,9 +33,13 @@ public class NetworkManager : MonoBehaviour
 
     private IEnumerator InitNetwork()
     {
-        var transport = new KcpTransport("127.0.0.1", 8080);
         var dispatcher = new MainThreadNetworkDispatcher();
-        _networkRuntime = new SharedNetworkRuntime(transport, dispatcher);
+        int? syncPort = _syncPort > 0 ? _syncPort : null;
+        _networkRuntime = NetworkIntegrationFactory.CreateClientRuntime(
+            _serverIp,
+            _reliablePort,
+            dispatcher,
+            syncPort: syncPort);
         _networkRuntime.LifecycleChanged += HandleLifecycleChanged;
 
         var startTask = _networkRuntime.StartAsync();

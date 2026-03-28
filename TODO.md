@@ -117,15 +117,15 @@ Acceptance:
 
 ### 9. Wire Dual Transports In The Integration Layer
 
-- [ ] Update the client integration entry point, likely [`Assets/Scripts/NetworkManager.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/NetworkManager.cs)
-- [ ] Update the server startup integration point
-- [ ] Instantiate one reliable transport and one sync transport
-- [ ] Ensure runtime construction uses both transports instead of a single shared instance
+- [x] Update the client integration entry point, likely [`Assets/Scripts/NetworkManager.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/NetworkManager.cs)
+- [x] Update the server startup integration point
+- [x] Instantiate one reliable transport and one sync transport
+- [x] Ensure runtime construction uses both transports instead of a single shared instance
 
 Acceptance:
 
-- [ ] Runtime uses logical dual-lane routing backed by two transport instances
-- [ ] Logging or tests confirm movement/state traffic and reliable event traffic are separated
+- [x] Runtime uses logical dual-lane routing backed by two transport instances
+- [x] Logging or tests confirm movement/state traffic and reliable event traffic are separated
 
 ### 10. Build And Test
 
