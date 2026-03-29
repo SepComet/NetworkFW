@@ -10,6 +10,7 @@ namespace Network.NetworkHost
             RemoteEndPoint = remoteEndPoint ?? throw new ArgumentNullException(nameof(remoteEndPoint));
             PlayerId = playerId ?? throw new ArgumentNullException(nameof(playerId));
             Hp = hp;
+            IsDead = hp <= 0;
         }
 
         public IPEndPoint RemoteEndPoint { get; }
@@ -17,6 +18,8 @@ namespace Network.NetworkHost
         public string PlayerId { get; }
 
         public long LastAcceptedMoveTick { get; internal set; }
+
+        public long LastAcceptedShootTick { get; internal set; }
 
         public long LastBroadcastTick { get; internal set; }
 
@@ -35,6 +38,8 @@ namespace Network.NetworkHost
         public float Rotation { get; internal set; }
 
         public int Hp { get; internal set; }
+
+        public bool IsDead { get; internal set; }
 
         public float InputX { get; internal set; }
 

@@ -154,6 +154,86 @@ namespace Network.NetworkHost
             return false;
         }
 
+        public bool TryGetStateByPlayerId(string playerId, out ServerAuthoritativeMovementState state)
+        {
+            if (string.IsNullOrWhiteSpace(playerId))
+            {
+                state = null;
+                return false;
+            }
+
+            lock (gate)
+            {
+                foreach (var candidate in statesByPeer.Values)
+                {
+                    if (!string.Equals(candidate.PlayerId, playerId, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    state = CloneState(candidate);
+                    return true;
+                }
+            }
+
+            state = null;
+            return false;
+        }
+
+        public bool TryUpdateState(IPEndPoint remoteEndPoint, Action<ServerAuthoritativeMovementState> updater, out ServerAuthoritativeMovementState state)
+        {
+            if (updater == null)
+            {
+                throw new ArgumentNullException(nameof(updater));
+            }
+
+            var key = Normalize(remoteEndPoint).ToString();
+            lock (gate)
+            {
+                if (!statesByPeer.TryGetValue(key, out var currentState))
+                {
+                    state = null;
+                    return false;
+                }
+
+                updater(currentState);
+                state = CloneState(currentState);
+                return true;
+            }
+        }
+
+        public bool TryUpdateStateByPlayerId(string playerId, Action<ServerAuthoritativeMovementState> updater, out ServerAuthoritativeMovementState state)
+        {
+            if (updater == null)
+            {
+                throw new ArgumentNullException(nameof(updater));
+            }
+
+            if (string.IsNullOrWhiteSpace(playerId))
+            {
+                state = null;
+                return false;
+            }
+
+            lock (gate)
+            {
+                foreach (var currentState in statesByPeer.Values)
+                {
+                    if (!string.Equals(currentState.PlayerId, playerId, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    updater(currentState);
+                    state = CloneState(currentState);
+                    return true;
+                }
+            }
+
+            state = null;
+            return false;
+        }
+
         public void RemoveState(IPEndPoint remoteEndPoint)
         {
             var key = Normalize(remoteEndPoint).ToString();
@@ -192,6 +272,7 @@ namespace Network.NetworkHost
             return new ServerAuthoritativeMovementState(state.RemoteEndPoint, state.PlayerId, state.Hp)
             {
                 LastAcceptedMoveTick = state.LastAcceptedMoveTick,
+                LastAcceptedShootTick = state.LastAcceptedShootTick,
                 LastBroadcastTick = state.LastBroadcastTick,
                 PositionX = state.PositionX,
                 PositionY = state.PositionY,
@@ -200,6 +281,7 @@ namespace Network.NetworkHost
                 VelocityY = state.VelocityY,
                 VelocityZ = state.VelocityZ,
                 Rotation = state.Rotation,
+                IsDead = state.IsDead,
                 InputX = state.InputX,
                 InputY = state.InputY
             };
@@ -233,7 +315,7 @@ namespace Network.NetworkHost
 
         private void IntegrateState(ServerAuthoritativeMovementState state, TimeSpan elapsed)
         {
-            if (state.InputX == 0f && state.InputY == 0f)
+            if (state.IsDead || (state.InputX == 0f && state.InputY == 0f))
             {
                 state.VelocityX = 0f;
                 state.VelocityY = 0f;

@@ -31,12 +31,17 @@ The shared server networking path SHALL own the final movement state for each ma
 - **THEN** subsequent authoritative state snapshots reflect that stopped state until a newer movement input is accepted
 
 ### Requirement: Server broadcasts authoritative `PlayerState` snapshots on the sync cadence
-The shared server networking path SHALL emit authoritative `PlayerState` snapshots for managed peers at a fixed cadence using the existing sync-lane message contract. Each snapshot MUST be derived from the server-owned movement state and include the authoritative tick for client reconciliation and interpolation.
+The shared server networking path SHALL emit authoritative `PlayerState` snapshots for managed peers at a fixed cadence using the existing sync-lane message contract. Each snapshot MUST be derived from the server-owned authoritative player state and include the authoritative tick for client reconciliation and interpolation. Authoritative HP changes produced by server-side combat resolution MUST be reflected in later snapshots for the affected peer.
 
 #### Scenario: Authority update step emits sync-lane player snapshots
-- **WHEN** the server reaches a configured authority broadcast cadence while one or more managed peers have authoritative movement state
+- **WHEN** the server reaches a configured authority broadcast cadence while one or more managed peers have authoritative player state
 - **THEN** it sends `PlayerState` snapshots using the sync-lane delivery policy when a distinct sync transport exists
-- **THEN** each snapshot includes the authoritative position, rotation, velocity, and tick from server-owned state
+- **THEN** each snapshot includes the authoritative position, rotation, velocity, HP, and tick from server-owned state
+
+#### Scenario: Combat-driven HP changes appear in later player snapshots
+- **WHEN** the server applies authoritative combat damage or death to a managed peer
+- **THEN** later `PlayerState` snapshots for that peer carry the updated authoritative HP value
+- **THEN** clients do not need to invent or persist a separate HP truth outside authoritative server snapshots
 
 #### Scenario: Reliable transport remains fallback when no sync transport exists
 - **WHEN** the server broadcasts authoritative `PlayerState` snapshots without a dedicated sync transport

@@ -27,7 +27,7 @@ Still missing for MVP:
 - [ ] Client-side `CombatEvent` receive/apply path
 - [x] Server startup path that actually uses `ServerNetworkHost`
 - [x] Server-authoritative movement/state loop
-- [ ] Server-authoritative shooting/combat resolution loop
+- [x] Server-authoritative shooting/combat resolution loop
 - [ ] Full `PlayerState` field application for rotation / HP / velocity
 - [ ] Remote-player snapshot buffering and interpolation strategy
 - [x] Explicit movement-stop handling via zero-input `MoveInput`
@@ -139,18 +139,18 @@ Acceptance:
 
 ### 8. Implement Server-Authoritative Shooting And Combat Resolution
 
-- [ ] Register `ShootInput` handling on the server
-- [ ] Validate shoot requests before accepting them
-- [ ] Resolve hit, damage, death, and rejection on the server
-- [ ] Broadcast `CombatEvent` on the reliable lane
-- [ ] Reflect authoritative HP changes in subsequent `PlayerState` snapshots
-- [ ] Keep server combat resolution independent from cosmetic client preplay
+- [x] Register `ShootInput` handling on the server
+- [x] Validate shoot requests before accepting them
+- [x] Resolve hit, damage, death, and rejection on the server
+- [x] Broadcast `CombatEvent` on the reliable lane
+- [x] Reflect authoritative HP changes in subsequent `PlayerState` snapshots
+- [x] Keep server combat resolution independent from cosmetic client preplay
 
 Acceptance:
 
-- [ ] Server decides whether shooting is valid
-- [ ] Server emits authoritative `CombatEvent` for damage/death/rejection
-- [ ] Clients update combat state from server truth
+- [x] Server decides whether shooting is valid
+- [x] Server emits authoritative `CombatEvent` for damage/death/rejection
+- [x] Clients update combat state from server truth
 
 ### 9. Expand Regression Coverage From Network Layer To Gameplay Flow
 
@@ -160,7 +160,7 @@ Acceptance:
 - [ ] Add tests for `CombatEvent` receive/apply behavior
 - [ ] Add tests for remote `PlayerState` buffering / interpolation decisions where practical
 - [x] Add tests for server-authoritative movement processing
-- [ ] Add tests for server-authoritative shooting/combat result generation
+- [x] Add tests for server-authoritative shooting/combat result generation
 - [ ] Add at least one end-to-end fake-transport test that covers `MoveInput -> PlayerState` and `ShootInput -> CombatEvent`
 
 Acceptance:

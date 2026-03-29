@@ -34,6 +34,8 @@ namespace Network.NetworkHost
 
         public ServerAuthoritativeMovementConfiguration AuthoritativeMovement { get; set; }
 
+        public ServerAuthoritativeCombatConfiguration AuthoritativeCombat { get; set; }
+
         internal void Validate()
         {
             if (ReliablePort <= 0)
@@ -55,6 +57,7 @@ namespace Network.NetworkHost
             }
 
             AuthoritativeMovement?.Validate();
+            AuthoritativeCombat?.Validate();
         }
     }
 }

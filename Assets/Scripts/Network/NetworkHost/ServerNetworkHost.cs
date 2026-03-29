@@ -14,6 +14,7 @@ namespace Network.NetworkHost
         private readonly ITransport syncTransport;
         private readonly MessageManager messageManager;
         private readonly ServerAuthoritativeMovementCoordinator authoritativeMovementCoordinator;
+        private readonly ServerAuthoritativeCombatCoordinator authoritativeCombatCoordinator;
 
         public ServerNetworkHost(
             ITransport transport,
@@ -23,7 +24,8 @@ namespace Network.NetworkHost
             ITransport syncTransport = null,
             IMessageDeliveryPolicyResolver deliveryPolicyResolver = null,
             SyncSequenceTracker syncSequenceTracker = null,
-            ServerAuthoritativeMovementConfiguration authoritativeMovement = null)
+            ServerAuthoritativeMovementConfiguration authoritativeMovement = null,
+            ServerAuthoritativeCombatConfiguration authoritativeCombat = null)
         {
             this.transport = transport ?? throw new ArgumentNullException(nameof(transport));
             this.syncTransport = syncTransport;
@@ -44,7 +46,12 @@ namespace Network.NetworkHost
                 this,
                 messageManager,
                 authoritativeMovement ?? new ServerAuthoritativeMovementConfiguration());
+            authoritativeCombatCoordinator = new ServerAuthoritativeCombatCoordinator(
+                messageManager,
+                authoritativeMovementCoordinator,
+                authoritativeCombat ?? new ServerAuthoritativeCombatConfiguration());
             messageManager.RegisterHandler(MessageType.MoveInput, authoritativeMovementCoordinator.HandleMoveInputAsync);
+            messageManager.RegisterHandler(MessageType.ShootInput, authoritativeCombatCoordinator.HandleShootInputAsync);
         }
 
         public MessageManager MessageManager => messageManager;
@@ -58,6 +65,8 @@ namespace Network.NetworkHost
         public IReadOnlyList<ManagedNetworkSession> ManagedSessions => SessionCoordinator.Sessions;
 
         public IReadOnlyList<ServerAuthoritativeMovementState> AuthoritativeMovementStates => authoritativeMovementCoordinator.States;
+
+        public IReadOnlyList<ServerAuthoritativeCombatState> AuthoritativeCombatStates => authoritativeCombatCoordinator.States;
 
         public event Action<MultiSessionLifecycleEvent> LifecycleChanged
         {
@@ -87,6 +96,7 @@ namespace Network.NetworkHost
 
             SessionCoordinator.RemoveAllSessions("Transport stopped");
             authoritativeMovementCoordinator.Clear();
+            authoritativeCombatCoordinator.Clear();
             PublishMetricsSessionSnapshots();
         }
 
@@ -114,6 +124,11 @@ namespace Network.NetworkHost
         public bool TryGetAuthoritativeMovementState(IPEndPoint remoteEndPoint, out ServerAuthoritativeMovementState state)
         {
             return authoritativeMovementCoordinator.TryGetState(remoteEndPoint, out state);
+        }
+
+        public bool TryGetAuthoritativeCombatState(IPEndPoint remoteEndPoint, out ServerAuthoritativeCombatState state)
+        {
+            return authoritativeCombatCoordinator.TryGetState(remoteEndPoint, out state);
         }
 
         public void NotifyLoginStarted(IPEndPoint remoteEndPoint)
@@ -172,6 +187,7 @@ namespace Network.NetworkHost
             }
 
             authoritativeMovementCoordinator.RemoveState(remoteEndPoint);
+            authoritativeCombatCoordinator.RemoveState(remoteEndPoint);
 
             RecordMetricsSessionSnapshot(transport, "server-host", session, ConnectionState.Disconnected);
             if (syncTransport != null && !ReferenceEquals(syncTransport, transport))

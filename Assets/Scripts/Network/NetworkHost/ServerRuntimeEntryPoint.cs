@@ -24,7 +24,8 @@ namespace Network.NetworkHost
                 configuration.DeliveryPolicyResolver,
                 configuration.SyncSequenceTracker,
                 configuration.TransportFactory,
-                configuration.AuthoritativeMovement);
+                configuration.AuthoritativeMovement,
+                configuration.AuthoritativeCombat);
 
             try
             {

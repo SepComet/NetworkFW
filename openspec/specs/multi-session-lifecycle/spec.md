@@ -13,7 +13,7 @@ The shared networking core SHALL provide a multi-session lifecycle coordinator f
 - **THEN** lifecycle changes for one peer do not overwrite or hide the state of the other peer
 
 ### Requirement: Multi-session hosts can observe and evaluate each managed session
-The multi-session lifecycle coordinator SHALL expose per-session lookup or enumeration and MUST evaluate timeout, heartbeat, login, reconnect, and authoritative movement tick rules for each managed session independently using the shared session lifecycle vocabulary. Server-side stale-input acceptance and authoritative movement tracking MUST remain scoped to the peer that produced the traffic.
+The multi-session lifecycle coordinator SHALL expose per-session lookup or enumeration and MUST evaluate timeout, heartbeat, login, reconnect, authoritative movement tick rules, and authoritative combat input rules for each managed session independently using the shared session lifecycle vocabulary. Server-side stale-input acceptance, shoot validation, and authoritative gameplay tracking MUST remain scoped to the peer that produced the traffic.
 
 #### Scenario: Timeout affects only one managed session
 - **WHEN** one managed session stops receiving liveness updates while another session continues receiving heartbeat or message activity
@@ -29,6 +29,11 @@ The multi-session lifecycle coordinator SHALL expose per-session lookup or enume
 - **WHEN** two managed peers send `MoveInput` traffic with different tick progress or ordering
 - **THEN** stale-input acceptance is evaluated independently for each managed peer
 - **THEN** one peer's late or advanced movement input does not overwrite or suppress the other's authoritative movement state
+
+#### Scenario: Shoot validation remains peer-scoped
+- **WHEN** two managed peers send `ShootInput` traffic with different tick progress, target choices, or validation failures
+- **THEN** acceptance and rejection are evaluated independently for each sending peer
+- **THEN** one peer's stale or invalid shoot request does not overwrite or suppress the other's authoritative combat state
 
 ### Requirement: Session removal is explicit and does not corrupt remaining peers
 The multi-session lifecycle coordinator SHALL support explicit removal or disconnection handling for one managed session without resetting unrelated sessions that remain active.

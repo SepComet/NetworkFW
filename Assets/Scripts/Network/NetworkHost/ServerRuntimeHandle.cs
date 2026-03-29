@@ -25,6 +25,8 @@ namespace Network.NetworkHost
 
         public IReadOnlyList<ServerAuthoritativeMovementState> AuthoritativeMovementStates => host.AuthoritativeMovementStates;
 
+        public IReadOnlyList<ServerAuthoritativeCombatState> AuthoritativeCombatStates => host.AuthoritativeCombatStates;
+
         public event Action<MultiSessionLifecycleEvent> LifecycleChanged
         {
             add => host.LifecycleChanged += value;
@@ -54,6 +56,11 @@ namespace Network.NetworkHost
         public bool TryGetAuthoritativeMovementState(IPEndPoint remoteEndPoint, out ServerAuthoritativeMovementState state)
         {
             return host.TryGetAuthoritativeMovementState(remoteEndPoint, out state);
+        }
+
+        public bool TryGetAuthoritativeCombatState(IPEndPoint remoteEndPoint, out ServerAuthoritativeCombatState state)
+        {
+            return host.TryGetAuthoritativeCombatState(remoteEndPoint, out state);
         }
 
         public void Stop()
