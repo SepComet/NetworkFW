@@ -29,6 +29,24 @@ public static class ClientGameplayInputFlow
         return true;
     }
 
+    public static bool TryCreateShootInput(
+        string playerId,
+        long tick,
+        bool fireTriggered,
+        Vector3 aimDirection,
+        out ShootInput message,
+        string targetId = "")
+    {
+        if (!fireTriggered)
+        {
+            message = null;
+            return false;
+        }
+
+        message = CreateShootInput(playerId, tick, aimDirection, targetId);
+        return true;
+    }
+
     public static ShootInput CreateShootInput(string playerId, long tick, Vector3 aimDirection, string targetId = "")
     {
         var planarDirection = new Vector3(aimDirection.x, 0f, aimDirection.z);
@@ -210,12 +228,14 @@ public class MovementComponent : MonoBehaviour
 
     private ShootInput CaptureShootInput()
     {
-        if (!Input.GetMouseButtonDown(0))
-        {
-            return null;
-        }
-
-        return ClientGameplayInputFlow.CreateShootInput(_master.PlayerId, Tick, ResolveAimDirection());
+        return ClientGameplayInputFlow.TryCreateShootInput(
+            _master.PlayerId,
+            Tick,
+            Input.GetMouseButtonDown(0),
+            ResolveAimDirection(),
+            out var shootInput)
+            ? shootInput
+            : null;
     }
 
     private Vector3 ResolveAimDirection()

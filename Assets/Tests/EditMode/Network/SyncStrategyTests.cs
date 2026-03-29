@@ -55,6 +55,33 @@ namespace Tests.EditMode.Network
         }
 
         [Test]
+        public void ClientGameplayInputFlow_TryCreateShootInput_LocalFirePathKeepsTargetOptional()
+        {
+            var created = ClientGameplayInputFlow.TryCreateShootInput(
+                "player-1",
+                21,
+                true,
+                new Vector3(2f, 0f, 0f),
+                out var shootInput);
+            var ignored = ClientGameplayInputFlow.TryCreateShootInput(
+                "player-1",
+                22,
+                false,
+                Vector3.forward,
+                out var ignoredShootInput);
+
+            Assert.That(created, Is.True);
+            Assert.That(shootInput, Is.Not.Null);
+            Assert.That(shootInput.PlayerId, Is.EqualTo("player-1"));
+            Assert.That(shootInput.Tick, Is.EqualTo(21));
+            Assert.That(shootInput.DirX, Is.EqualTo(1f));
+            Assert.That(shootInput.DirY, Is.EqualTo(0f));
+            Assert.That(shootInput.TargetId, Is.EqualTo(string.Empty));
+            Assert.That(ignored, Is.False);
+            Assert.That(ignoredShootInput, Is.Null);
+        }
+
+        [Test]
         public void ClientPredictionBuffer_AuthoritativeState_PrunesAcknowledgedMoveInputs()
         {
             var buffer = new ClientPredictionBuffer();

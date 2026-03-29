@@ -165,8 +165,6 @@ namespace Network.NetworkHost
 
             if (input == null ||
                 string.IsNullOrWhiteSpace(input.PlayerId) ||
-                string.IsNullOrWhiteSpace(input.TargetId) ||
-                string.Equals(input.PlayerId, input.TargetId, StringComparison.Ordinal) ||
                 !IsFinite(input.DirX) ||
                 !IsFinite(input.DirY))
             {
@@ -179,8 +177,13 @@ namespace Network.NetworkHost
                 return false;
             }
 
-            if (!movementCoordinator.TryGetState(sender, out attackerState) ||
-                !string.Equals(attackerState.PlayerId, input.PlayerId, StringComparison.Ordinal) ||
+            if (!movementCoordinator.TryGetState(sender, out attackerState) &&
+                !movementCoordinator.EnsureState(sender, input.PlayerId, out attackerState))
+            {
+                return false;
+            }
+
+            if (!string.Equals(attackerState.PlayerId, input.PlayerId, StringComparison.Ordinal) ||
                 attackerState.IsDead ||
                 attackerState.Hp <= 0 ||
                 input.Tick <= attackerState.LastAcceptedShootTick)
@@ -188,14 +191,93 @@ namespace Network.NetworkHost
                 return false;
             }
 
-            if (!movementCoordinator.TryGetStateByPlayerId(input.TargetId, out targetState) ||
-                targetState.IsDead ||
-                targetState.Hp <= 0)
+            return TryResolveTargetState(input, attackerState, out targetState);
+        }
+
+        private bool TryResolveTargetState(
+            ShootInput input,
+            ServerAuthoritativeMovementState attackerState,
+            out ServerAuthoritativeMovementState targetState)
+        {
+            if (!string.IsNullOrWhiteSpace(input.TargetId))
+            {
+                if (string.Equals(attackerState.PlayerId, input.TargetId, StringComparison.Ordinal))
+                {
+                    targetState = null;
+                    return false;
+                }
+
+                if (!movementCoordinator.TryGetStateByPlayerId(input.TargetId, out targetState) ||
+                    targetState.IsDead ||
+                    targetState.Hp <= 0)
+                {
+                    targetState = null;
+                    return false;
+                }
+
+                return true;
+            }
+
+            return TryResolveTargetStateFromAim(input, attackerState, out targetState);
+        }
+
+        private bool TryResolveTargetStateFromAim(
+            ShootInput input,
+            ServerAuthoritativeMovementState attackerState,
+            out ServerAuthoritativeMovementState targetState)
+        {
+            targetState = null;
+
+            var aimLength = MathF.Sqrt((input.DirX * input.DirX) + (input.DirY * input.DirY));
+            if (aimLength <= 0f)
             {
                 return false;
             }
 
-            return true;
+            var aimX = input.DirX / aimLength;
+            var aimY = input.DirY / aimLength;
+            var bestAlignment = float.NegativeInfinity;
+            var bestDistanceSquared = float.PositiveInfinity;
+
+            foreach (var candidate in movementCoordinator.States)
+            {
+                if (candidate == null ||
+                    string.Equals(candidate.PlayerId, attackerState.PlayerId, StringComparison.Ordinal) ||
+                    candidate.IsDead ||
+                    candidate.Hp <= 0)
+                {
+                    continue;
+                }
+
+                var offsetX = candidate.PositionX - attackerState.PositionX;
+                var offsetY = candidate.PositionZ - attackerState.PositionZ;
+                var distanceSquared = (offsetX * offsetX) + (offsetY * offsetY);
+                if (distanceSquared <= 0f)
+                {
+                    continue;
+                }
+
+                var inverseDistance = 1f / MathF.Sqrt(distanceSquared);
+                var alignment = (offsetX * inverseDistance * aimX) + (offsetY * inverseDistance * aimY);
+                if (alignment <= 0f)
+                {
+                    continue;
+                }
+
+                if (targetState == null ||
+                    alignment > bestAlignment + 0.0001f ||
+                    (MathF.Abs(alignment - bestAlignment) <= 0.0001f &&
+                        (distanceSquared < bestDistanceSquared - 0.0001f ||
+                         (MathF.Abs(distanceSquared - bestDistanceSquared) <= 0.0001f &&
+                          string.CompareOrdinal(candidate.PlayerId, targetState.PlayerId) < 0))))
+                {
+                    targetState = candidate;
+                    bestAlignment = alignment;
+                    bestDistanceSquared = distanceSquared;
+                }
+            }
+
+            return targetState != null;
         }
 
         private void BroadcastRejectedShot(ShootInput input)

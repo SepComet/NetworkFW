@@ -41,6 +41,46 @@ namespace Network.NetworkHost
             }
         }
 
+        public bool EnsureState(IPEndPoint remoteEndPoint, string playerId, out ServerAuthoritativeMovementState state)
+        {
+            if (remoteEndPoint == null)
+            {
+                throw new ArgumentNullException(nameof(remoteEndPoint));
+            }
+
+            if (string.IsNullOrWhiteSpace(playerId))
+            {
+                state = null;
+                return false;
+            }
+
+            var normalizedSender = Normalize(remoteEndPoint);
+            var key = normalizedSender.ToString();
+
+            lock (gate)
+            {
+                if (statesByPeer.TryGetValue(key, out var existingState))
+                {
+                    if (!string.Equals(existingState.PlayerId, playerId, StringComparison.Ordinal))
+                    {
+                        state = null;
+                        return false;
+                    }
+
+                    state = CloneState(existingState);
+                    return true;
+                }
+
+                var createdState = new ServerAuthoritativeMovementState(
+                    normalizedSender,
+                    playerId,
+                    configuration.DefaultHp);
+                statesByPeer.Add(key, createdState);
+                state = CloneState(createdState);
+                return true;
+            }
+        }
+
         public Task HandleMoveInputAsync(byte[] payload, IPEndPoint sender)
         {
             if (payload == null || sender == null)

@@ -15,6 +15,8 @@ namespace Network.NetworkHost
         private readonly MessageManager messageManager;
         private readonly ServerAuthoritativeMovementCoordinator authoritativeMovementCoordinator;
         private readonly ServerAuthoritativeCombatCoordinator authoritativeCombatCoordinator;
+        private readonly object playerIdentityGate = new();
+        private readonly Dictionary<string, string> playerIdsByPeer = new();
 
         public ServerNetworkHost(
             ITransport transport,
@@ -97,6 +99,10 @@ namespace Network.NetworkHost
             SessionCoordinator.RemoveAllSessions("Transport stopped");
             authoritativeMovementCoordinator.Clear();
             authoritativeCombatCoordinator.Clear();
+            lock (playerIdentityGate)
+            {
+                playerIdsByPeer.Clear();
+            }
             PublishMetricsSessionSnapshots();
         }
 
@@ -140,12 +146,20 @@ namespace Network.NetworkHost
         public void NotifyLoginSucceeded(IPEndPoint remoteEndPoint)
         {
             SessionCoordinator.NotifyLoginSucceeded(remoteEndPoint);
+            BootstrapAuthoritativeMovementState(remoteEndPoint);
             PublishMetricsSessionSnapshot(remoteEndPoint);
+        }
+
+        public void NotifyLoginSucceeded(IPEndPoint remoteEndPoint, string playerId)
+        {
+            RememberPlayerId(remoteEndPoint, playerId);
+            NotifyLoginSucceeded(remoteEndPoint);
         }
 
         public void NotifyLoginFailed(IPEndPoint remoteEndPoint, string reason = null)
         {
             SessionCoordinator.NotifyLoginFailed(remoteEndPoint, reason);
+            ForgetPlayerId(remoteEndPoint);
             PublishMetricsSessionSnapshot(remoteEndPoint);
         }
 
@@ -188,6 +202,7 @@ namespace Network.NetworkHost
 
             authoritativeMovementCoordinator.RemoveState(remoteEndPoint);
             authoritativeCombatCoordinator.RemoveState(remoteEndPoint);
+            ForgetPlayerId(remoteEndPoint);
 
             RecordMetricsSessionSnapshot(transport, "server-host", session, ConnectionState.Disconnected);
             if (syncTransport != null && !ReferenceEquals(syncTransport, transport))
@@ -198,10 +213,109 @@ namespace Network.NetworkHost
             return true;
         }
 
-        private void HandleTransportReceive(byte[] _, IPEndPoint sender)
+        private void HandleTransportReceive(byte[] data, IPEndPoint sender)
         {
             SessionCoordinator.ObserveTransportActivity(sender);
+            ObservePlayerIdentity(data, sender);
             PublishMetricsSessionSnapshot(sender);
+        }
+
+        private void BootstrapAuthoritativeMovementState(IPEndPoint remoteEndPoint)
+        {
+            if (!TryGetKnownPlayerId(remoteEndPoint, out var playerId))
+            {
+                return;
+            }
+
+            authoritativeMovementCoordinator.EnsureState(remoteEndPoint, playerId, out _);
+        }
+
+        private void ObservePlayerIdentity(byte[] data, IPEndPoint sender)
+        {
+            if (data == null || sender == null)
+            {
+                return;
+            }
+
+            Envelope envelope;
+            try
+            {
+                envelope = Envelope.Parser.ParseFrom(data);
+            }
+            catch
+            {
+                return;
+            }
+
+            if ((MessageType)envelope.Type != MessageType.LoginRequest)
+            {
+                return;
+            }
+
+            LoginRequest request;
+            try
+            {
+                request = LoginRequest.Parser.ParseFrom(envelope.Payload);
+            }
+            catch
+            {
+                return;
+            }
+
+            RememberPlayerId(sender, request.PlayerId);
+        }
+
+        private void RememberPlayerId(IPEndPoint remoteEndPoint, string playerId)
+        {
+            if (remoteEndPoint == null || string.IsNullOrWhiteSpace(playerId))
+            {
+                return;
+            }
+
+            var key = Normalize(remoteEndPoint).ToString();
+            lock (playerIdentityGate)
+            {
+                playerIdsByPeer[key] = playerId;
+            }
+        }
+
+        private bool TryGetKnownPlayerId(IPEndPoint remoteEndPoint, out string playerId)
+        {
+            playerId = null;
+            if (remoteEndPoint == null)
+            {
+                return false;
+            }
+
+            var key = Normalize(remoteEndPoint).ToString();
+            lock (playerIdentityGate)
+            {
+                return playerIdsByPeer.TryGetValue(key, out playerId);
+            }
+        }
+
+        private void ForgetPlayerId(IPEndPoint remoteEndPoint)
+        {
+            if (remoteEndPoint == null)
+            {
+                return;
+            }
+
+            var key = Normalize(remoteEndPoint).ToString();
+            lock (playerIdentityGate)
+            {
+                playerIdsByPeer.Remove(key);
+            }
+        }
+
+        private static IPEndPoint Normalize(IPEndPoint remoteEndPoint)
+        {
+            if (remoteEndPoint == null)
+            {
+                throw new ArgumentNullException(nameof(remoteEndPoint));
+            }
+
+            return new IPEndPoint(remoteEndPoint.Address, remoteEndPoint.Port);
         }
 
         private void PublishMetricsSessionSnapshots()

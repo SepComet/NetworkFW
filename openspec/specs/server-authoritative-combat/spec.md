@@ -5,15 +5,15 @@ Define the shared server-side combat authority contract that accepts `ShootInput
 
 ## Requirements
 ### Requirement: Server registers and validates `ShootInput` per peer
-The shared server networking path SHALL register `ShootInput` handling through the server host/runtime composition and SHALL validate each inbound shooting request against the sending managed peer before applying any authoritative combat result. Validation MUST reject malformed numeric input, missing or mismatched player identity, non-increasing shoot ticks for that sender, zero-direction fire requests, and targets that do not resolve to a living managed peer.
+The shared server networking path SHALL register `ShootInput` handling through the server host/runtime composition and SHALL validate each inbound shooting request against the sending managed peer before applying any authoritative combat result. Validation MUST reject malformed numeric input, missing or mismatched player identity, non-increasing shoot ticks for that sender, zero-direction fire requests, and shot requests that do not resolve to a living managed peer either through an explicit `targetId` or through server-side aim-direction fallback when `targetId` is omitted.
 
 #### Scenario: Valid `ShootInput` is accepted for the sending peer
-- **WHEN** a managed peer sends a well-formed `ShootInput` whose `playerId` maps to that sender, whose tick is newer than the sender's last accepted shoot tick, and whose `targetId` resolves to another living managed peer
+- **WHEN** a managed peer sends a well-formed `ShootInput` whose `playerId` maps to that sender, whose tick is newer than the sender's last accepted shoot tick, and whose target resolves to another living managed peer either from explicit `targetId` data or from server-side aim-direction fallback
 - **THEN** the server accepts the request for that sender only
 - **THEN** the sender's last accepted shoot tick is updated without changing other peers' combat bookkeeping
 
 #### Scenario: Invalid `ShootInput` is rejected without mutating authoritative combat state
-- **WHEN** a managed peer sends a `ShootInput` with malformed direction data, a stale tick, a mismatched `playerId`, or a target that is missing, self-targeted, or already dead
+- **WHEN** a managed peer sends a `ShootInput` with malformed direction data, a stale tick, a mismatched `playerId`, or targeting data that resolves to no living non-self managed peer
 - **THEN** the server rejects that request
 - **THEN** no authoritative damage or death state is applied to any peer from that rejected request
 
@@ -21,7 +21,7 @@ The shared server networking path SHALL register `ShootInput` handling through t
 The shared server networking path SHALL own final combat resolution for accepted shots, including hit acceptance, damage application, authoritative HP mutation, and death determination. Combat resolution MUST update the authoritative server-owned state of both the attacker and target as needed without delegating gameplay truth to client-side prediction or presentation code.
 
 #### Scenario: Accepted shot applies damage to the authoritative target state
-- **WHEN** the server accepts a `ShootInput` that targets a living managed peer
+- **WHEN** the server accepts a `ShootInput` that resolves a living managed peer
 - **THEN** it resolves the shot as an authoritative hit against that target
 - **THEN** it reduces the target's authoritative HP according to the configured damage rule before later state snapshots are broadcast
 

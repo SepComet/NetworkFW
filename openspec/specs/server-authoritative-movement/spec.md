@@ -5,7 +5,12 @@ Define the shared server-side movement authority contract that accepts `MoveInpu
 
 ## Requirements
 ### Requirement: Server registers and validates `MoveInput` per peer
-The shared server networking path SHALL register `MoveInput` handling through the server host/runtime composition and SHALL validate inbound movement input against the sending peer before mutating authoritative state. Validation MUST reject stale ticks for that peer, malformed numeric values, and payloads that do not map to the sender's managed movement state.
+The shared server networking path SHALL register `MoveInput` handling through the server host/runtime composition and SHALL validate inbound movement input against the sending peer before mutating authoritative state. The server SHALL also bootstrap authoritative movement state for a managed peer once login succeeds so idle players can receive authoritative snapshots before any movement input is sent. Validation MUST reject stale ticks for that peer, malformed numeric values, and payloads whose player identity does not match the sender's managed movement state.
+
+#### Scenario: Login success bootstraps idle authoritative movement state
+- **WHEN** a managed peer completes login before sending any `MoveInput`
+- **THEN** the server creates authoritative movement state for that peer with zero movement intent and default authoritative HP
+- **THEN** later authority broadcasts can include that idle peer even before movement input arrives
 
 #### Scenario: Accepted `MoveInput` updates the sender's authoritative movement intent
 - **WHEN** a managed peer sends a well-formed `MoveInput` with a tick newer than the last accepted movement tick for that peer
