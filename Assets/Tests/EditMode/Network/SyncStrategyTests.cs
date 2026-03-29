@@ -157,6 +157,119 @@ namespace Tests.EditMode.Network
         }
 
         [Test]
+        public void ClientCombatEventRouting_DamageEvent_RoutesToTargetPlayer()
+        {
+            var routed = ClientCombatEventRouting.TryGetAffectedPlayerId(
+                new CombatEvent
+                {
+                    EventType = CombatEventType.DamageApplied,
+                    AttackerId = "player-a",
+                    TargetId = "player-b",
+                    Damage = 15
+                },
+                out var playerId);
+
+            Assert.That(routed, Is.True);
+            Assert.That(playerId, Is.EqualTo("player-b"));
+        }
+
+        [Test]
+        public void ClientCombatEventRouting_ShootRejected_RoutesToAttackerPlayer()
+        {
+            var routed = ClientCombatEventRouting.TryGetAffectedPlayerId(
+                new CombatEvent
+                {
+                    EventType = CombatEventType.ShootRejected,
+                    AttackerId = "player-a",
+                    TargetId = "player-b"
+                },
+                out var playerId);
+
+            Assert.That(routed, Is.True);
+            Assert.That(playerId, Is.EqualTo("player-a"));
+        }
+
+        [Test]
+        public void ClientAuthoritativePlayerState_DamageCombatEvent_ReducesHpAndRecordsCombatResult()
+        {
+            var owner = new ClientAuthoritativePlayerState();
+            owner.TryAccept(new PlayerState { PlayerId = "player-1", Tick = 10, Hp = 100 }, out _);
+
+            var applied = owner.TryApplyCombatEvent(
+                new CombatEvent
+                {
+                    Tick = 11,
+                    EventType = CombatEventType.DamageApplied,
+                    AttackerId = "player-2",
+                    TargetId = "player-1",
+                    Damage = 30
+                },
+                "player-1",
+                out var snapshot,
+                out var combatSnapshot);
+
+            Assert.That(applied, Is.True);
+            Assert.That(snapshot, Is.Not.Null);
+            Assert.That(snapshot.Hp, Is.EqualTo(70));
+            Assert.That(owner.Current.Hp, Is.EqualTo(70));
+            Assert.That(combatSnapshot.HasLastEvent, Is.True);
+            Assert.That(combatSnapshot.LastEventType, Is.EqualTo(CombatEventType.DamageApplied));
+            Assert.That(combatSnapshot.LastDamage, Is.EqualTo(30));
+            Assert.That(combatSnapshot.IsDead, Is.False);
+        }
+
+        [Test]
+        public void ClientAuthoritativePlayerState_ShootRejected_LeavesHpUnchangedAndRecordsVisibility()
+        {
+            var owner = new ClientAuthoritativePlayerState();
+            owner.TryAccept(new PlayerState { PlayerId = "player-1", Tick = 10, Hp = 90 }, out _);
+
+            var applied = owner.TryApplyCombatEvent(
+                new CombatEvent
+                {
+                    Tick = 12,
+                    EventType = CombatEventType.ShootRejected,
+                    AttackerId = "player-1",
+                    TargetId = "player-2"
+                },
+                "player-1",
+                out var snapshot,
+                out var combatSnapshot);
+
+            Assert.That(applied, Is.True);
+            Assert.That(snapshot.Hp, Is.EqualTo(90));
+            Assert.That(combatSnapshot.LastEventType, Is.EqualTo(CombatEventType.ShootRejected));
+            Assert.That(combatSnapshot.LastDamage, Is.EqualTo(0));
+            Assert.That(combatSnapshot.IsDead, Is.False);
+        }
+
+        [Test]
+        public void ClientAuthoritativePlayerState_DeathCombatEvent_MarksPlayerDeadAndAllowsLaterSnapshotRefresh()
+        {
+            var owner = new ClientAuthoritativePlayerState();
+            owner.TryAccept(new PlayerState { PlayerId = "player-1", Tick = 10, Hp = 20 }, out _);
+            owner.TryApplyCombatEvent(
+                new CombatEvent
+                {
+                    Tick = 11,
+                    EventType = CombatEventType.Death,
+                    AttackerId = "player-2",
+                    TargetId = "player-1"
+                },
+                "player-1",
+                out var deathSnapshot,
+                out var deathCombatSnapshot);
+
+            var accepted = owner.TryAccept(new PlayerState { PlayerId = "player-1", Tick = 12, Hp = 55 }, out var refreshedSnapshot);
+
+            Assert.That(deathSnapshot.Hp, Is.EqualTo(0));
+            Assert.That(deathCombatSnapshot.IsDead, Is.True);
+            Assert.That(accepted, Is.True);
+            Assert.That(refreshedSnapshot.Hp, Is.EqualTo(55));
+            Assert.That(owner.CombatPresentation.IsDead, Is.False);
+        }
+
+        [Test]
         public void RemotePlayerSnapshotInterpolator_StaleOrDuplicateSnapshots_AreRejected()
         {
             var interpolator = new RemotePlayerSnapshotInterpolator();

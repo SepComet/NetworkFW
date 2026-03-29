@@ -6,6 +6,7 @@ public class Player : MonoBehaviour
     //[SerializeField] private float _moveSpeed = 10f;
     public string PlayerId { get; private set; } = "1001";
     public ClientAuthoritativePlayerStateSnapshot AuthoritativeState => _authoritativeState.Current;
+    public ClientCombatPresentationSnapshot CombatPresentation => _authoritativeState.CombatPresentation;
     [SerializeField] private MeshRenderer _meshRenderer;
     [SerializeField] private Material[] _materials;
     [SerializeField] private Camera _camera;
@@ -56,8 +57,19 @@ public class Player : MonoBehaviour
             return;
         }
 
-        _playerUI?.SyncAuthoritativeState(snapshot);
+        _playerUI?.SyncAuthoritativeState(snapshot, CombatPresentation);
         _movement?.OnAuthoritativeState(snapshot);
+    }
+
+    public bool ApplyCombatEvent(CombatEvent combatEvent)
+    {
+        if (!_authoritativeState.TryApplyCombatEvent(combatEvent, PlayerId, out var snapshot, out var combatSnapshot))
+        {
+            return false;
+        }
+
+        _playerUI?.SyncAuthoritativeState(snapshot, combatSnapshot);
+        return true;
     }
 
     public void SyncTick(long serverTick)

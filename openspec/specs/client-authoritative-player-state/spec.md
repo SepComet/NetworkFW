@@ -37,3 +37,11 @@ The client SHALL expose authoritative HP or comparable authoritative state infor
 - **WHEN** the client accepts a `PlayerState` whose authoritative HP differs from the previously accepted snapshot
 - **THEN** the relevant UI or diagnostics update to show the new authoritative HP value
 - **THEN** the displayed value comes from authoritative `PlayerState` data rather than speculative local gameplay logic
+
+### Requirement: Client-owned authoritative player presentation can consume authoritative combat-result deltas
+The client-owned authoritative player presentation model SHALL accept authoritative combat-result updates in addition to full `PlayerState` snapshots. Applying an authoritative `CombatEvent` for a player MUST be able to adjust the client-owned HP, death state, or related combat presentation truth for that player until a newer authoritative `PlayerState` snapshot refreshes the full state.
+
+#### Scenario: Authoritative combat event updates owned player presentation state
+- **WHEN** the client applies a `CombatEvent` that targets or otherwise affects a known player
+- **THEN** that player's owned authoritative presentation state updates to reflect the authoritative combat result
+- **THEN** a later accepted `PlayerState` snapshot remains allowed to refresh the full authoritative state for that player

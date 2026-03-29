@@ -8,6 +8,8 @@ public class PlayerUI : MonoBehaviour
     private Player _master;
     private Camera _mainCamera;
     private bool _isVisible = true;
+    private ClientAuthoritativePlayerStateSnapshot _authoritativeSnapshot;
+    private ClientCombatPresentationSnapshot _combatSnapshot = ClientCombatPresentationSnapshot.Empty;
 
     public void Init(Player master)
     {
@@ -17,9 +19,11 @@ public class PlayerUI : MonoBehaviour
         RefreshText();
     }
 
-    public void SyncAuthoritativeState(ClientAuthoritativePlayerStateSnapshot snapshot)
+    public void SyncAuthoritativeState(ClientAuthoritativePlayerStateSnapshot snapshot, ClientCombatPresentationSnapshot combatSnapshot)
     {
-        RefreshText(snapshot);
+        _authoritativeSnapshot = snapshot;
+        _combatSnapshot = combatSnapshot ?? ClientCombatPresentationSnapshot.Empty;
+        RefreshText();
     }
 
     private void FixedUpdate()
@@ -47,19 +51,30 @@ public class PlayerUI : MonoBehaviour
         _isVisible = false;
     }
 
-    private void RefreshText(ClientAuthoritativePlayerStateSnapshot snapshot = null)
+    private void RefreshText()
     {
         if (_text == null || _master == null)
         {
             return;
         }
 
-        if (snapshot == null)
+        if (_authoritativeSnapshot == null)
         {
-            _text.text = _master.PlayerId;
+            _text.text = $"{_master.PlayerId}\nHP:?\nCombat:{FormatCombatLine()}";
             return;
         }
 
-        _text.text = $"{_master.PlayerId}\nHP:{snapshot.Hp} Tick:{snapshot.Tick}";
+        _text.text = $"{_master.PlayerId}\nHP:{_authoritativeSnapshot.Hp} Tick:{_authoritativeSnapshot.Tick}\nCombat:{FormatCombatLine()}";
+    }
+
+    private string FormatCombatLine()
+    {
+        if (_combatSnapshot == null || !_combatSnapshot.HasLastEvent)
+        {
+            return _combatSnapshot != null && _combatSnapshot.IsDead ? "Dead" : "None";
+        }
+
+        var deadSuffix = _combatSnapshot.IsDead ? " Dead" : string.Empty;
+        return $"{_combatSnapshot.LastEventType} Dmg:{_combatSnapshot.LastDamage} Tick:{_combatSnapshot.LastEventTick}{deadSuffix}";
     }
 }

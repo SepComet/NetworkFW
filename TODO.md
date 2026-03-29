@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make the current project actually satisfy the MVP described in [MobaSyncMVP.md](D:/Learn/GameLearn/UnityProjects/NetworkFW/MobaSyncMVP.md):
+Make the current project actually satisfy the MVP described in [MobaSyncMVP.md](./MobaSyncMVP.md):
 
 - Client sends only `MoveInput` and `ShootInput`
 - Server owns gameplay truth for position, HP, combat resolution, and validation
@@ -43,7 +43,7 @@ Still missing for MVP:
 - [x] Keep `ShootInput` and `CombatEvent` on `ReliableOrdered`
 - [x] Keep stale-drop logic only for `MoveInput` and `PlayerState`
 - [x] Keep client prediction buffering limited to `MoveInput`
-- [x] Keep dual-transport runtime construction in [`Assets/Scripts/Network/NetworkApplication/NetworkIntegrationFactory.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkApplication/NetworkIntegrationFactory.cs)
+- [x] Keep dual-transport runtime construction in [`Assets/Scripts/Network/NetworkApplication/NetworkIntegrationFactory.cs`](./Assets/Scripts/Network/NetworkApplication/NetworkIntegrationFactory.cs)
 
 Acceptance:
 
@@ -53,7 +53,7 @@ Acceptance:
 
 ### 2. Align Client Input Flow With MVP
 
-- [x] Update [`Assets/Scripts/MovementComponent.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/MovementComponent.cs) so movement intent can send an explicit zero-vector stop message when the player releases input
+- [x] Update [`Assets/Scripts/MovementComponent.cs`](./Assets/Scripts/MovementComponent.cs) so movement intent can send an explicit zero-vector stop message when the player releases input
 - [x] Keep local prediction immediate for the controlled player
 - [x] Add a client shooting input capture path
 - [x] Add `NetworkManager.SendShootInput(...)`
@@ -96,21 +96,21 @@ Acceptance:
 
 ### 5. Add Client-Side `CombatEvent` Handling
 
-- [ ] Register a `CombatEvent` handler in [`Assets/Scripts/NetworkManager.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/NetworkManager.cs)
-- [ ] Route combat results to the relevant player or combat presentation components
-- [ ] Apply hit / damage / death / shoot-rejected results from server truth
-- [ ] Keep local fire FX separate from authoritative damage and death resolution
-- [ ] Add UI or debug output for combat-result visibility during MVP development
+- [x] Register a `CombatEvent` handler in [`Assets/Scripts/NetworkManager.cs`](./Assets/Scripts/NetworkManager.cs)
+- [x] Route combat results to the relevant player or combat presentation components
+- [x] Apply hit / damage / death / shoot-rejected results from server truth
+- [x] Keep local fire FX separate from authoritative damage and death resolution
+- [x] Add UI or debug output for combat-result visibility during MVP development
 
 Acceptance:
 
-- [ ] `CombatEvent` updates HP, death state, or hit feedback on clients
-- [ ] `ShootRejected` can be surfaced without client-side authoritative rollback logic
-- [ ] Combat results are driven by server messages, not speculative client outcomes
+- [x] `CombatEvent` updates HP, death state, or hit feedback on clients
+- [x] `ShootRejected` can be surfaced without client-side authoritative rollback logic
+- [x] Combat results are driven by server messages, not speculative client outcomes
 
 ### 6. Add A Real Server Startup / Integration Entry Point
 
-- [ ] Add or update the runtime server bootstrap so production code actually constructs [`ServerNetworkHost`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Scripts/Network/NetworkHost/ServerNetworkHost.cs)
+- [ ] Add or update the runtime server bootstrap so production code actually constructs [`ServerNetworkHost`](./Assets/Scripts/Network/NetworkHost/ServerNetworkHost.cs)
 - [ ] Start both reliable and sync transports from the server integration layer
 - [ ] Drain server pending messages on a regular loop
 - [ ] Hook server lifecycle logging/diagnostics in the same way the client runtime does
@@ -154,7 +154,7 @@ Acceptance:
 
 ### 9. Expand Regression Coverage From Network Layer To Gameplay Flow
 
-- [ ] Extend [`Assets/Tests/EditMode/Network/MessageManagerTests.cs`](D:/Learn/GameLearn/UnityProjects/NetworkFW/Assets/Tests/EditMode/Network/MessageManagerTests.cs) only as needed for lane policy regressions
+- [ ] Extend [`Assets/Tests/EditMode/Network/MessageManagerTests.cs`](./Assets/Tests/EditMode/Network/MessageManagerTests.cs) only as needed for lane policy regressions
 - [ ] Add tests that cover explicit zero-input movement stop behavior
 - [ ] Add tests for client `ShootInput` send routing
 - [ ] Add tests for `CombatEvent` receive/apply behavior

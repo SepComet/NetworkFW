@@ -73,6 +73,29 @@ public class MasterManager : MonoBehaviour
         else Debug.LogWarning("Player not found");
     }
 
+    public void ApplyCombatEvent(CombatEvent combatEvent)
+    {
+        if (combatEvent == null)
+        {
+            Debug.LogWarning("CombatEvent is null");
+            return;
+        }
+
+        if (!ClientCombatEventRouting.TryGetAffectedPlayerId(combatEvent, out var playerId))
+        {
+            Debug.LogWarning($"CombatEvent has no routable player: {combatEvent.EventType}");
+            return;
+        }
+
+        if (_players.TryGetValue(playerId, out var player))
+        {
+            player.ApplyCombatEvent(combatEvent);
+            return;
+        }
+
+        Debug.LogWarning($"Player not found for CombatEvent: {playerId}");
+    }
+
     public Player GetCurrentPlayer()
     {
         return _players[LocalPlayerId];

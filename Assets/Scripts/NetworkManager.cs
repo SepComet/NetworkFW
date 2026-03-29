@@ -126,6 +126,7 @@ public class NetworkManager : MonoBehaviour
     {
         _networkRuntime.MessageManager.RegisterHandler(MessageType.LoginResponse, HandleLoginResponse);
         _networkRuntime.MessageManager.RegisterHandler(MessageType.PlayerState, HandlePlayerState);
+        _networkRuntime.MessageManager.RegisterHandler(MessageType.CombatEvent, HandleCombatEvent);
         _networkRuntime.MessageManager.RegisterHandler(MessageType.HeartbeatResponse, HandleHeartbeatResponse);
         _networkRuntime.MessageManager.RegisterHandler(MessageType.LogoutRequest, HandleLogoutRequest);
         _networkRuntime.MessageManager.RegisterHandler(MessageType.PlayerJoin, HandlePlayerJoin);
@@ -176,6 +177,14 @@ public class NetworkManager : MonoBehaviour
         {
             player.SyncTick(currentServerTick.Value);
         }
+    }
+
+    private void HandleCombatEvent(byte[] data, IPEndPoint sender)
+    {
+        _networkRuntime.NotifyInboundActivity();
+        var combatEvent = CombatEvent.Parser.ParseFrom(data);
+        MasterManager.Instance.ApplyCombatEvent(combatEvent);
+        Debug.Log($"收到CombatEvent::Type={combatEvent.EventType},Attacker={combatEvent.AttackerId},Target={combatEvent.TargetId},Damage={combatEvent.Damage}");
     }
 
     private void HandleLogoutRequest(byte[] data, IPEndPoint sender)
