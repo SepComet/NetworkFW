@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Network.NetworkHost;
 using Network.NetworkTransport;
 
@@ -82,6 +83,11 @@ namespace Network.NetworkApplication
                 syncTransport,
                 deliveryPolicyResolver,
                 syncSequenceTracker);
+        }
+
+        public static Task<ServerRuntimeHandle> StartServerRuntimeAsync(ServerRuntimeConfiguration configuration)
+        {
+            return ServerRuntimeEntryPoint.StartAsync(configuration);
         }
 
         private static void ValidateDualPortConfiguration(int reliablePort, int? syncPort)

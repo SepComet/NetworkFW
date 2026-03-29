@@ -25,7 +25,7 @@ Still missing for MVP:
 
 - [ ] Client-side `ShootInput` send path
 - [ ] Client-side `CombatEvent` receive/apply path
-- [ ] Server startup path that actually uses `ServerNetworkHost`
+- [x] Server startup path that actually uses `ServerNetworkHost`
 - [ ] Server-authoritative movement/state loop
 - [ ] Server-authoritative shooting/combat resolution loop
 - [ ] Full `PlayerState` field application for rotation / HP / velocity
@@ -110,17 +110,17 @@ Acceptance:
 
 ### 6. Add A Real Server Startup / Integration Entry Point
 
-- [ ] Add or update the runtime server bootstrap so production code actually constructs [`ServerNetworkHost`](./Assets/Scripts/Network/NetworkHost/ServerNetworkHost.cs)
-- [ ] Start both reliable and sync transports from the server integration layer
-- [ ] Drain server pending messages on a regular loop
-- [ ] Hook server lifecycle logging/diagnostics in the same way the client runtime does
-- [ ] Make the startup path easy to locate and test
+- [x] Add or update the runtime server bootstrap so production code actually constructs [`ServerNetworkHost`](./Assets/Scripts/Network/NetworkHost/ServerNetworkHost.cs) via [`ServerRuntimeEntryPoint`](./Assets/Scripts/Network/NetworkHost/ServerRuntimeEntryPoint.cs)
+- [x] Start both reliable and sync transports from the server integration layer
+- [x] Drain server pending messages on a regular loop through [`ServerRuntimeHandle`](./Assets/Scripts/Network/NetworkHost/ServerRuntimeHandle.cs)
+- [x] Preserve server lifecycle diagnostics and visibility through the existing `ServerNetworkHost` lifecycle surface and metrics hooks
+- [x] Make the startup path easy to locate and test
 
 Acceptance:
 
-- [ ] There is a concrete server startup path in production code, not only shared infrastructure and tests
-- [ ] Server runtime uses two distinct transport instances when sync port is configured
-- [ ] Server can receive gameplay traffic on both lanes
+- [x] There is a concrete server startup path in production code, not only shared infrastructure and tests
+- [x] Server runtime uses two distinct transport instances when sync port is configured
+- [x] Server can receive gameplay traffic on both lanes
 
 ### 7. Implement Server-Authoritative Movement And State Broadcast
 
